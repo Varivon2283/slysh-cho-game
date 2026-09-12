@@ -881,46 +881,60 @@
 // Загрузка топ-10 пацанов из базы
     async function loadLeaderboard() {
       const listEl = document.getElementById('leaderboardList');
+      if (!listEl) return;
+
       if (!sbClient) {
-        listEl.innerHTML = '<div style="text-align:center; color:#888;">Рейтинг доступен только с подключением к облаку</div>';
+        listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Рейтинг доступен только с подключением к облаку</div>';
         return;
       }
 
-      listEl.innerHTML = '<div style="text-align:center; color:#888;">Подтягиваем авторитетов...</div>';
+      listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Подтягиваем авторитетов...</div>';
 
       try {
         const { data, error } = await sbClient
           .from('players')
-          .select('name, level, seeds, gear')
+          .select('name, level, seeds')
           .order('level', { ascending: false })
-          .order('seeds', { ascending: false })
           .limit(10);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Leaderboard error:", error);
+          listEl.innerHTML = `<div style="text-align:center; color:#e53935; padding: 10px;">Ошибка загрузки: ${error.message}</div>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Район пуст... Будь первым!</div>';
+          return;
+        }
 
         let html = '';
         const medals = ['🥇', '🥈', '🥉'];
 
         data.forEach((player, idx) => {
           const medal = medals[idx] || `#${idx + 1}`;
+          const pName = escapeHtml(player.name || 'Пацанчик');
+          const pLvl = player.level || 1;
+          const pSeeds = player.seeds || 0;
+
           html += `
-            <div class="list-item" style="border-left: 3px solid ${idx < 3 ? '#ffd600' : '#444'};">
+            <div class="list-item" style="border-left: 3px solid ${idx < 3 ? '#ffd600' : '#555'}; margin-bottom: 8px;">
               <div>
-                <b>${medal} ${escapeHtml(player.name || 'Аноним')}</b>
-                <div style="font-size: 10px; color: #888;">Шмот: ${player.gear || 'Спортивки'}</div>
+                <b style="font-size: 13px;">${medal} ${pName}</b>
+                <div style="font-size: 10px; color: #888;">Районный авторитет</div>
               </div>
               <div style="text-align: right;">
-                <b style="color: #ffb74d;">${player.level} ур.</b>
-                <div style="font-size: 11px; color: #aaa;">${player.seeds} 🌻</div>
+                <b style="color: #ffb74d; font-size: 13px;">${pLvl} ур.</b>
+                <div style="font-size: 11px; color: #aaa;">${pSeeds} 🌻</div>
               </div>
             </div>
           `;
         });
 
-        listEl.innerHTML = html || '<div style="text-align:center; color:#888;">Район пуст... Будь первым!</div>';
+        listEl.innerHTML = html;
       } catch (err) {
-        console.error("Ошибка загрузки лидерборда:", err);
-        listEl.innerHTML = '<div style="text-align:center; color:#e53935;">Не удалось загрузить рейтинг</div>';
+        console.error("Critical leaderboard err:", err);
+        listEl.innerHTML = `<div style="text-align:center; color:#e53935; padding: 10px;">Сбой связи: ${err.message || err}</div>`;
       }
     }
 
