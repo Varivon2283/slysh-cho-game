@@ -18,7 +18,7 @@
     /* HUD */
     .hud {
       display: grid; grid-template-columns: repeat(4, 1fr);
-      background: #202020; border-bottom: 2px solid #e65100;
+      background: #1e1e1e; border-bottom: 2px solid #e65100;
       padding: 8px 4px; text-align: center; font-size: 11px;
     }
     .hud-num { font-size: 14px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
@@ -26,7 +26,7 @@
     /* Экраны */
     .screen {
       flex: 1; display: none; flex-direction: column;
-      align-items: center; padding: 14px; overflow-y: auto;
+      align-items: center; padding: 12px; overflow-y: auto;
     }
     .screen.active { display: flex; }
 
@@ -43,19 +43,27 @@
     .bar-fill-enemy { height: 100%; background: #8e24aa; transition: width 0.2s; }
 
     .stats-box {
-      width: 100%; max-width: 320px; background: #222;
+      width: 100%; max-width: 320px; background: #202020;
       border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6;
       border: 1px solid #333;
     }
 
+    /* Цитата противника */
+    .speech-bubble {
+      width: 100%; max-width: 320px; background: #2a2a2a;
+      border-left: 4px solid #e65100; padding: 8px 12px;
+      font-style: italic; font-size: 13px; color: #ffcc80;
+      margin-bottom: 8px; border-radius: 0 8px 8px 0;
+    }
+
     .battle-log {
-      width: 100%; max-width: 320px; height: 110px; background: #0a0a0a;
+      width: 100%; max-width: 320px; height: 105px; background: #0a0a0a;
       border-radius: 8px; padding: 8px; font-size: 12px; overflow-y: auto;
       border: 1px solid #333; color: #ccc; margin-bottom: 8px; text-align: left;
     }
 
     .list-item {
-      width: 100%; max-width: 320px; background: #222;
+      width: 100%; max-width: 320px; background: #202020;
       border: 1px solid #333; border-radius: 8px; padding: 10px;
       margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
     }
@@ -69,9 +77,9 @@
     .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
 
     /* Навигация */
-    .nav-bar { display: flex; background: #1a1a1a; border-top: 1px solid #333; }
+    .nav-bar { display: flex; background: #181818; border-top: 1px solid #333; }
     .nav-tab {
-      flex: 1; text-align: center; padding: 12px 0; font-size: 10px;
+      flex: 1; text-align: center; padding: 10px 0; font-size: 10px;
       color: #777; cursor: pointer;
     }
     .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
@@ -89,10 +97,10 @@
 
   <!-- ЭКРАН 1: ДВОР -->
   <div class="screen active" id="screenHome">
-    <h3 style="margin: 4px 0 8px;" id="heroName">Четкий пацан</h3>
+    <h3 style="margin: 4px 0 6px;" id="heroName">Четкий пацан</h3>
     <img src="assets/preview.jpg" onerror="this.src='https://placehold.co/640x360/222/e65100?text=Слышь+Чо%3F'" class="hero-banner">
 
-    <div style="width: 100%; max-width: 320px; text-align: left; font-size: 12px; color: #aaa;">Твое здоровье:</div>
+    <div style="width: 100%; max-width: 320px; text-align: left; font-size: 11px; color: #aaa;">Здоровье:</div>
     <div class="bar-wrap"><div class="bar-fill-hp" id="heroHpBar"></div></div>
 
     <div class="stats-box">
@@ -100,18 +108,20 @@
       <div>⚡ Ловкость: <b id="statAgi">5</b></div>
       <div>🛡 Выносливость: <b id="statVit">10</b></div>
       <div>Погремуха: <b id="rankName">Шнырь</b></div>
-      <div style="margin-top: 6px; font-size: 11px; color: #888;">Шмот: <span id="equippedText">Спортивки с рынка</span></div>
+      <div style="margin-top: 4px; font-size: 11px; color: #888;">Шмот: <span id="equippedText">Спортивки</span></div>
     </div>
     
-    <button class="btn" style="margin-top: 10px; width: 100%; max-width: 320px; background: #2e7d32;" onclick="healPlayer()">💊 Залечить синяки у аптеки (10 🌻)</button>
+    <button class="btn" style="margin-top: 8px; width: 100%; max-width: 320px; background: #2e7d32;" onclick="healPlayer()">💊 Залечить синяки (10 🌻)</button>
   </div>
 
   <!-- ЭКРАН 2: РАЙОН -->
   <div class="screen" id="screenFight">
-    <div style="width: 100%; max-width: 320px; text-align: center; margin-bottom: 6px;">
-      <b id="enemyTitle" style="font-size: 15px;">Выбери цель</b>
+    <div style="width: 100%; max-width: 320px; text-align: center; margin-bottom: 4px;">
+      <b id="enemyTitle" style="font-size: 14px;">Выбери цель</b>
       <div class="bar-wrap"><div class="bar-fill-enemy" id="enemyHpBar" style="width: 0%;"></div></div>
     </div>
+
+    <div class="speech-bubble" id="enemyQuote" style="display: none;">— Слышь, ты с какого раёна?</div>
 
     <div class="battle-log" id="battleLog">Район шумит... Кому объясним за шмот?</div>
 
@@ -140,7 +150,7 @@
       <button class="btn" onclick="upgrade('agi')"><span id="cAgi">20</span> 🌻</button>
     </div>
     <div class="list-item">
-      <div><b>Бой с тенью</b><br><small>+1 к Выносливости (+10 макс ХП)</small></div>
+      <div><b>Бой с тенью</b><br><small>+1 к Выносливости (+10 ХП)</small></div>
       <button class="btn" onclick="upgrade('vit')"><span id="cVit">20</span> 🌻</button>
     </div>
   </div>
@@ -162,36 +172,48 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 5: БРАТВА (РЕФЕРАЛЫ) -->
+  <!-- ЭКРАН 5: БРАТВА -->
   <div class="screen" id="screenCrew">
     <h3 style="margin: 0 0 8px;">Твоя Братва</h3>
     <p style="font-size: 13px; color: #aaa; text-align: center; max-width: 300px;">
-      Зови корешей на район! Каждый кореш приносит <b>+50 семок</b> сразу и помогает валить боссов.
+      Зови корешей на район! Каждый кореш приносит <b>семки на пассиве</b>.
     </p>
 
     <div class="stats-box" style="margin-bottom: 15px; text-align: center;">
       <div>Корешей в банде: <b id="friendsCount" style="color: #ffb74d; font-size: 18px;">0</b></div>
-      <div style="font-size: 11px; color: #888; margin-top: 4px;">Общак приносит семки каждые 10 секунд!</div>
+      <div style="font-size: 11px; color: #888; margin-top: 4px;">Общак приносит семки каждые 10 сек!</div>
     </div>
 
     <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей в банду</button>
     <button class="btn" style="margin-top: 10px; background: #333; width: 100%; max-width: 320px;" onclick="copyInviteLink()">📋 Скопировать ссылку</button>
   </div>
 
-  <!-- МЕНЮ НАВИГАЦИИ -->
+  <!-- ЭКРАН 6: ДОСКА ПОЧЕТА (РЕЙТИНГ) -->
+  <div class="screen" id="screenTop">
+    <h3 style="margin: 0 0 8px;">Авторитеты района</h3>
+    <div class="list-item"><div>🥇 1. <b>Лёха Сиплый</b></div><div>9999 🌻</div></div>
+    <div class="list-item"><div>🥈 2. <b>Колян Седой</b></div><div>7420 🌻</div></div>
+    <div class="list-item"><div>🥉 3. <b>Димон Кастет</b></div><div>4300 🌻</div></div>
+    <div class="list-item" style="border: 1px solid #ffb74d;">
+      <div>Ты: <b id="myLeaderName">Четкий</b></div>
+      <div><span id="myLeaderSeeds">0</span> 🌻</div>
+    </div>
+  </div>
+
+  <!-- НАВИГАЦИЯ -->
   <div class="nav-bar">
     <div class="nav-tab active" onclick="tab('screenHome', this)">Двор 🏠</div>
     <div class="nav-tab" onclick="tab('screenFight', this)">Район 👊</div>
     <div class="nav-tab" onclick="tab('screenGym', this)">Качалка 🏋️</div>
     <div class="nav-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
     <div class="nav-tab" onclick="tab('screenCrew', this)">Братва 👥</div>
+    <div class="nav-tab" onclick="tab('screenTop', this)">Топ 🏆</div>
   </div>
 
   <script>
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
-    // ЗВУКОВОЙ ДВИЖОК (Web Audio API)
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let actx = null;
     function playSound(type) {
@@ -244,6 +266,15 @@
 
     let enemy = null;
     const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
+    
+    const quotes = [
+      "— Слышь, мелочь есть? А если найду?",
+      "— Ты с какого раёна вообще зарулил?",
+      "— Стоять! Две мобилы с камерой есть позвонить?",
+      "— Опа, а кто это у нас тут такой модный шагает?",
+      "— Поясни за шмот быстро!"
+    ];
+
     const roster = {
       1: { name: "Школьник", hp: 35, str: 3, agi: 2, rew: 15, cost: 5 },
       2: { name: "Мажор", hp: 80, str: 7, agi: 6, rew: 45, cost: 10 },
@@ -251,9 +282,9 @@
       4: { name: "☠️ Трудовик Михалыч", hp: 350, str: 18, agi: 12, rew: 300, cost: 20 }
     };
 
-    if (tg?.initDataUnsafe?.user?.first_name) {
-      document.getElementById('heroName').innerText = tg.initDataUnsafe.user.first_name;
-    }
+    const heroName = tg?.initDataUnsafe?.user?.first_name || 'Четкий пацан';
+    document.getElementById('heroName').innerText = heroName;
+    document.getElementById('myLeaderName').innerText = heroName;
 
     function maxHp() { return p.vit * 10; }
 
@@ -273,6 +304,7 @@
 
     function render() {
       document.getElementById('hudSeeds').innerText = p.seeds;
+      document.getElementById('myLeaderSeeds').innerText = p.seeds;
       document.getElementById('hudEnergy').innerText = p.energy;
       document.getElementById('hudHp').innerText = p.hp;
       document.getElementById('hudMaxHp').innerText = maxHp();
@@ -350,20 +382,20 @@
       return `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
     }
 
-    function copyInviteLink() {
-      const botUsername = 'slysh_cho_bot';
-      const myId = tg?.initDataUnsafe?.user?.id || '1';
-      const dummyUrl = `https://t.me/${botUsername}?start=${myId}`;
-      navigator.clipboard?.writeText(dummyUrl);
-      alert('Инвайт-ссылка скопирована в буфер обмена!');
-    }
-
     function inviteFriends() {
       if (tg?.openTelegramLink) {
         tg.openTelegramLink(getBotLink());
       } else {
         copyInviteLink();
       }
+    }
+
+    function copyInviteLink() {
+      const botUsername = 'slysh_cho_bot';
+      const myId = tg?.initDataUnsafe?.user?.id || '1';
+      const dummyUrl = `https://t.me/${botUsername}?start=${myId}`;
+      navigator.clipboard?.writeText(dummyUrl);
+      alert('Инвайт-ссылка скопирована!');
     }
 
     // БОЕВКА
@@ -374,6 +406,12 @@
 
       p.energy -= t.cost;
       enemy = { ...t, curHp: t.hp, maxHp: t.hp };
+
+      // Рандомная цитата врага
+      const q = quotes[Math.floor(Math.random() * quotes.length)];
+      const qBox = document.getElementById('enemyQuote');
+      qBox.innerText = q;
+      qBox.style.display = 'block';
 
       document.getElementById('enemyTitle').innerText = `${enemy.name} (${enemy.curHp} HP)`;
       document.getElementById('enemyHpBar').style.width = '100%';
@@ -391,17 +429,17 @@
       // Удар игрока
       const dodge = Math.random() < (enemy.agi * 0.025);
       if (dodge) {
-        log(`💨 ${enemy.name} увернулся!`);
+        log(`💨 ${enemy.name} увернулся от удара!`);
       } else {
         const crit = Math.random() < (p.agi * 0.025);
         let dmg = Math.max(3, p.str + Math.floor(Math.random() * 4));
         if (crit) {
           dmg = Math.floor(dmg * 1.8);
           playSound('crit');
-          log(`💥 <b>КРИТИЧЕСКИЙ В ЧЕЛЮСТЬ!</b> -${dmg}`);
+          log(`💥 <b>КРИТ В ЧЕЛЮСТЬ!</b> -${dmg}`);
         } else {
           playSound('hit');
-          log(`👊 Ты пробил на <b>${dmg}</b> урона!`);
+          log(`👊 Ты влепил на <b>${dmg}</b> урона!`);
         }
         enemy.curHp -= dmg;
       }
@@ -416,16 +454,16 @@
         return;
       }
 
-      // Ответка противника
+      // Ответный удар
       setTimeout(() => {
         const heroDodge = Math.random() < (p.agi * 0.03);
         if (heroDodge) {
-          log(`⚡ Ты увернулся от выпада!`);
+          log(`⚡ Ты четко увернулся!`);
         } else {
           let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
           p.hp = Math.max(0, p.hp - eDmg);
           playSound('hit');
-          log(`🤕 Враг в ответ нанёс <b>${eDmg}</b> урона!`);
+          log(`🤕 Враг ответил на <b>${eDmg}</b> урона!`);
         }
 
         if (p.hp <= 0) {
@@ -447,7 +485,7 @@
     }
 
     function runAway() {
-      log('🏃 Ты убежал во дворы...');
+      log('🏃 Ты дал дёру по кустам...');
       resetCombat();
     }
 
@@ -455,6 +493,7 @@
       enemy = null;
       document.getElementById('districtList').style.display = 'flex';
       document.getElementById('combatControls').style.display = 'none';
+      document.getElementById('enemyQuote').style.display = 'none';
       document.getElementById('enemyTitle').innerText = "Выбери цель";
       document.getElementById('enemyHpBar').style.width = '0%';
       save();
@@ -465,7 +504,7 @@
       if (p.energy < p.maxEnergy) { p.energy++; save(); }
     }, 3000);
 
-    // Пассивный доход от братвы (каждые 10 сек)
+    // Доход от корешей
     setInterval(() => {
       if (p.friends > 0) {
         p.seeds += p.friends * 2;
