@@ -73,3 +73,37 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+from aiogram.types import LabeledPrice, PreCheckoutQuery
+
+# Создание счета на оплату 50 Stars за 5 Мобил
+@dp.message(lambda msg: msg.text == "/buy_phones")
+async def send_stars_invoice(message: types.Message):
+    prices = [LabeledPrice(label="5 Мобил 📱", amount=50)] # amount в Stars
+    await bot.send_invoice(
+        chat_id=message.chat.id,
+        title="Пакет мобил для района",
+        description="5 новеньких мобил 📱 в карман для прокачки и семок",
+        payload="buy_phones_5",
+        currency="XTR", # XTR — официальный код Telegram Stars
+        prices=prices,
+        provider_token="" # Для Telegram Stars provider_token всегда оставляется пустым!
+    )
+
+# Обязательное подтверждение доступности товара
+@dp.pre_checkout_query()
+async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+# Начисление после успешной оплаты
+@dp.message(lambda msg: msg.successful_payment is not None)
+async def process_successful_payment(message: types.Message):
+    payment = message.successful_payment
+    user_id = message.from_user.id
+    
+    if payment.invoice_payload == "buy_phones_5":
+        # Начисляем 5 мобил в Supabase
+        res = supabase.table("players").select("phones").eq("tg_id", user_id).single().execute()
+        if res.data:
+            new_phones = res.data["phones"] + 5
+            supabase.table("players").update({"phones": new_phones}).eq("tg_id", user_id).execute()
+            await message.answer("✅ Барыга подогнал товар! 5 мобил 📱 упали на твой счет в игре.")
