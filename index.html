@@ -261,12 +261,31 @@
     <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
   </div>
 
+  <!-- ЭКРАН ТОПА И PVP -->
+  <div class="screen" id="screenTop">
+    <h3 style="margin: 0 0 6px;">Смотрящие за Районом</h3>
+    <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">
+      Самые опасные пацаны. Выбей их с пьедестала!
+    </p>
+
+    <button class="btn btn-boss" style="width: 100%; max-width: 320px; margin-bottom: 12px;" onclick="pvpFindOpponent()">
+      🥊 Наехать на реального пацана (-10 ⚡)
+    </button>
+
+    <div id="pvpResultBox" style="display: none; width: 100%; max-width: 320px; background: #222; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12px;"></div>
+
+    <div style="width: 100%; max-width: 320px;" id="leaderboardList">
+      <div style="text-align: center; color: #888;">Загрузка авторитетов...</div>
+    </div>
+  </div>
+
   <!-- НАВИГАЦИЯ -->
-  <div class="nav-bar">
+ <div class="nav-bar">
     <div class="nav-tab active" onclick="tab('screenHome', this)">Двор 🏠</div>
     <div class="nav-tab" onclick="tab('screenFight', this)">Район 👊</div>
     <div class="nav-tab" onclick="tab('screenGym', this)">Качалка 🏋️</div>
     <div class="nav-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
+    <div class="nav-tab" onclick="tab('screenTop', this); loadLeaderboard();">Топ 👑</div>
     <div class="nav-tab" onclick="tab('screenLoot', this)">Хабар 🎒</div>
     <div class="nav-tab" onclick="tab('screenCrew', this)">Братва 👥</div>
   </div>
