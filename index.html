@@ -130,6 +130,29 @@
     
     <canvas id="heroCanvas" width="320" height="180" class="hero-canvas"></canvas>
 
+    <!-- ЕЖЕДНЕВНЫЙ ПОДГОН -->
+    <div style="width: 100%; max-width: 320px; background: #1f1d14; border: 1px solid #ffd600; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <b style="color: #ffd600; font-size: 12px;">📅 Дневной грев</b>
+        <div style="font-size: 10px; color: #bbb;">Серия: <span id="streakCountText">1</span>-й день</div>
+      </div>
+      <button id="btnDailyBonus" class="btn btn-gold" style="font-size: 11px; padding: 6px 12px;" onclick="claimDailyReward()">Забрать</button>
+    </div>
+
+    <!-- КРЫШЕВАНИЕ ОБЪЕКТОВ (ОФЛАЙН ДОХОД) -->
+    <div style="width: 100%; max-width: 320px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <b style="font-size: 12px; color: #81c784;">🏪 Крышевание точек</b>
+        <span style="font-size: 10px; color: #888;">Капает в карман</span>
+      </div>
+      <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">
+        Накопилось: <b id="afkSeedsText" style="color: #ffd600;">0</b> 🌻
+      </div>
+      <button id="btnClaimAfk" class="btn" style="width: 100%; background: #2e7d32; font-size: 11px; padding: 7px;" onclick="claimAfkIncome()">
+        💰 Снять кассу с района
+      </button>
+    </div>
+
     <div style="width: 100%; max-width: 320px; text-align: left; font-size: 11px; color: #aaa;">Здоровье:</div>
     <div class="bar-wrap"><div class="bar-fill-hp" id="heroHpBar"></div></div>
 
@@ -375,7 +398,11 @@
       items: [],
       loot: [],
       gear: 'Спортивки',
-      gang_id: null
+      gang_id: null,
+      streak: 0,
+      lastStreakDate: null,
+      lastClaimTime: Date.now(),
+      biz: { kiosk: 1, carwash: 0, market: 0 }
     };
 
     // --- ОТРИСОВКА ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
@@ -469,6 +496,12 @@
           p.loot = data.loot || [];
           p.gear = data.gear;
           statusEl.innerText = '☁️ Облако подключено ✅';
+          p.streak = data.daily_streak || 0;
+          p.lastStreakDate = data.last_streak_date;
+          p.lastClaimTime = data.last_claim_time ? new Date(data.last_claim_time).getTime() : Date.now();
+          p.biz = data.businesses || { kiosk: 1, carwash: 0, market: 0 };
+          checkDailyStreakUI();
+          calcAfkIncome();
         } else {
           await sbClient.from('players').insert([{
             tg_id: userTgId,
@@ -1332,7 +1365,110 @@ let raidBossData = null;
         console.error("Ошибка обновления рейд-босса:", err);
       }
     }
-    
+
+// Расчет офлайн дохода от точек
+    function calcAfkIncome() {
+      const now = Date.now();
+      const diffMinutes = Math.floor((now - p.lastClaimTime) / 60000);
+
+      // Доходность: киоск = 1 семка/мин, мойка = 3 семки/мин, рынок = 8 семок/мин
+      const ratePerMinute = (p.biz.kiosk * 1) + (p.biz.carwash * 3) + (p.biz.market * 8);
+
+      // Максимальное накопление — за 8 часов (480 минут)
+      const cappedMinutes = Math.min(diffMinutes, 480);
+      const accumulated = cappedMinutes * ratePerMinute;
+
+      const afkTextEl = document.getElementById('afkSeedsText');
+      if (afkTextEl) afkTextEl.innerText = accumulated;
+
+      return accumulated;
+    }
+
+    // Сбор кассы
+    async function claimAfkIncome() {
+      const amount = calcAfkIncome();
+      if (amount <= 0) return alert("Пока касса пустая, подожди немного!");
+
+      p.seeds += amount;
+      p.lastClaimTime = Date.now();
+      save();
+
+      playSound('coin');
+      tg?.HapticFeedback?.notificationOccurred('success');
+      alert(`Снял с района +${amount} 🌻!`);
+
+      calcAfkIncome();
+
+      if (sbClient) {
+        await sbClient.from('players').update({
+          seeds: p.seeds,
+          last_claim_time: new Date().toISOString()
+        }).eq('tg_id', userTgId);
+      }
+    }
+
+    // Проверка статуса ежедневного бонуса
+    function checkDailyStreakUI() {
+      const today = new Date().toISOString().slice(0, 10);
+      const btn = document.getElementById('btnDailyBonus');
+      const streakText = document.getElementById('streakCountText');
+      if (!btn || !streakText) return;
+
+      streakText.innerText = (p.streak || 0) + 1;
+
+      if (p.lastStreakDate === today) {
+        btn.disabled = true;
+        btn.innerText = 'Получено ✅';
+        btn.style.background = '#444';
+      } else {
+        btn.disabled = false;
+        btn.innerText = 'Забрать';
+        btn.style.background = '';
+      }
+    }
+
+    // Забрать дневной грев
+    async function claimDailyReward() {
+      const today = new Date().toISOString().slice(0, 10);
+      if (p.lastStreakDate === today) return alert("Сегодня ты уже забирал подгон!");
+
+      // Проверка непрерывности серии
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      if (p.lastStreakDate === yesterday) {
+        p.streak = (p.streak || 0) + 1;
+      } else {
+        p.streak = 1; // Сброс серии, если пропустил день
+      }
+
+      // Награда: растет с каждым днем (день 7 — мобила!)
+      const dayBonus = p.streak % 7;
+      let rewardSeeds = 50 * (dayBonus === 0 ? 7 : dayBonus);
+      let rewardPhones = dayBonus === 0 ? 1 : 0;
+
+      p.seeds += rewardSeeds;
+      p.phones += rewardPhones;
+      p.lastStreakDate = today;
+      save();
+
+      playSound('coin');
+      tg?.HapticFeedback?.notificationOccurred('success');
+
+      let msg = `📅 Подгон за ${p.streak}-й день получен!\n+${rewardSeeds} 🌻`;
+      if (rewardPhones > 0) msg += ` и +${rewardPhones} 📱!`;
+      alert(msg);
+
+      checkDailyStreakUI();
+
+      if (sbClient) {
+        await sbClient.from('players').update({
+          seeds: p.seeds,
+          phones: p.phones,
+          daily_streak: p.streak,
+          last_streak_date: today
+        }).eq('tg_id', userTgId);
+      }
+    }
+    setInterval(calcAfkIncome, 10000);
   </script>
 </body>
 </html>
