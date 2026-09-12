@@ -249,16 +249,44 @@
   </div>
 
   <!-- БРАТВА -->
+  <!-- ЭКРАН БРИГАДЫ И РЕФЕРАЛОВ -->
   <div class="screen" id="screenCrew">
-    <h3 style="margin: 0 0 8px;">Твоя Братва</h3>
-    <p style="font-size: 12px; color: #aaa; text-align: center; max-width: 300px;">
-      Зови корешей! Каждый кореш приносит <b>семки на пассиве</b> и <b>+1 мобилу 📱</b>!
+    <h3 style="margin: 0 0 6px;">Бригада & Братва</h3>
+    <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 12px;">
+      В одиночку район не удержать. Собирай банду и держи общак!
     </p>
-    <div class="stats-box" style="margin-bottom: 12px; text-align: center;">
-      <div>Корешей в банде: <b id="friendsCount" style="color: #ffb74d; font-size: 18px;">0</b></div>
-      <div style="font-size: 11px; color: #888; margin-top: 4px;">Общак приносит семки каждые 10 сек!</div>
+
+    <!-- БЛОК РЕФЕРАЛОВ -->
+    <div style="width: 100%; max-width: 320px; background: #222; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+      <div style="font-size: 12px; margin-bottom: 6px;">Твои кореша: <b id="friendsCount" style="color: #ffb74d;">0</b> чел.</div>
+      <div style="font-size: 11px; color: #888; margin-bottom: 10px;">Каждый кореш приносит пассивные семки в карман!</div>
+      <button class="btn btn-gold" style="width: 100%;" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
     </div>
-    <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
+
+    <!-- БЛОК БРИГАДЫ (ЕСЛИ СОСТОИТ) -->
+    <div id="gangActiveBox" style="display: none; width: 100%; max-width: 320px; background: #1c221c; border: 1px solid #2e7d32; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+      <div style="font-size: 11px; color: #81c784;">Твоя группировка:</div>
+      <h3 id="myGangName" style="margin: 4px 0 8px; color: #fff;">—</h3>
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px;">
+        <span>Общак: <b id="myGangBank" style="color: #ffd600;">0</b> 🌻</span>
+        <span>Бойцов: <b id="myGangMembers">1</b></span>
+      </div>
+      <button class="btn" style="width: 100%; background: #2e7d32;" onclick="depositToGangBank()">💰 Закинуть 50 🌻 в общак</button>
+    </div>
+
+    <!-- БЛОК СОЗДАНИЯ / ВСТУПЛЕНИЯ В БРИГАДУ (ЕСЛИ НЕТ БАНДЫ) -->
+    <div id="gangCreateBox" style="display: none; width: 100%; max-width: 320px; background: #222; border: 1px solid #444; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 6px;">Создать свою банду</div>
+      <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Цена создания: 100 семок и 1 мобила</div>
+      <input type="text" id="newGangName" placeholder="Название банды (напр. Центровые)" maxlength="20" style="width: 100%; box-sizing: border-box; padding: 8px; background: #111; border: 1px solid #444; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;" />
+      <button class="btn" style="width: 100%;" onclick="createGang()">⚡ Скоротать бригаду</button>
+    </div>
+
+    <!-- СПИСОК ТОП БРИГАД -->
+    <h4 style="margin: 8px 0 6px; color: #ffb74d;">Топ Группировок</h4>
+    <div style="width: 100%; max-width: 320px;" id="gangsLeaderboard">
+      <div style="text-align: center; color: #888; font-size: 12px;">Подтягиваем список банд...</div>
+    </div>
   </div>
 
   <!-- ЭКРАН ТОПА И PVP -->
