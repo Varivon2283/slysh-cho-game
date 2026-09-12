@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Слышь Чо?</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -53,9 +52,11 @@
     }
     .screen.active { display: flex; }
 
-    .hero-banner {
-      width: 100%; max-width: 320px; border-radius: 10px;
-      border: 2px solid #333; margin-bottom: 8px;
+    /* Оформление холста персонажа */
+    .hero-canvas {
+      width: 100%; max-width: 320px; height: 180px;
+      border-radius: 10px; border: 2px solid #333;
+      background: #1a1a1a; margin-bottom: 8px;
     }
 
     .bar-wrap {
@@ -122,11 +123,12 @@
     <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
   </div>
 
-  <!-- ДВОР -->
+  <!-- ДВОР (ХОЛСТ ВМЕСТО КАРТИНКИ) -->
   <div class="screen active" id="screenHome">
     <div id="cloudStatus">☁️ Подключение к облаку...</div>
     <h3 style="margin: 2px 0 6px;" id="heroName">Четкий пацан</h3>
-    <img src="assets/preview.jpg" onerror="this.src='https://placehold.co/640x360/222/e65100?text=Слышь+Чо%3F'" class="hero-banner">
+    
+    <canvas id="heroCanvas" width="320" height="180" class="hero-canvas"></canvas>
 
     <div style="width: 100%; max-width: 320px; text-align: left; font-size: 11px; color: #aaa;">Здоровье:</div>
     <div class="bar-wrap"><div class="bar-fill-hp" id="heroHpBar"></div></div>
@@ -189,8 +191,8 @@
   <div class="screen" id="screenShop">
     <h3 style="margin: 0 0 8px;">Ларёк «У Ашота»</h3>
     <div class="list-item">
-      <div><b>Чётки лагерные</b><br><small>+2 Сила, +2 Ловкость</small></div>
-      <button class="btn" id="item_rosary" onclick="buyGear('rosary', 80, 2, 2, 0, 'Чётки')">80 🌻</button>
+      <div><b>Кепка-восьмиклинка</b><br><small>+3 к Ловкости</small></div>
+      <button class="btn" id="item_cap" onclick="buyGear('cap', 50, 0, 3, 0, 'Кепка-восьмиклинка')">50 🌻</button>
     </div>
     <div class="list-item">
       <div><b>Кастет свинцовый</b><br><small>+6 к Силе</small></div>
@@ -256,8 +258,6 @@
   </div>
 
   <script>
-    // НАСТРОЙКА ОБЛАКА SUPABASE
-    // ЗАМЕНИ ЭТИ ДВЕ СТРОЧКИ НА СВОИ ИЗ SUPABASE:
     const SUPABASE_URL = 'https://tdnvnbpyuiwuytpaucih.supabase.co/rest/v1/';
     const SUPABASE_ANON_KEY = 'sb_publishable_gXMjGOLhnY4I9hwGSqM-SA_jIe_rBN9';
     
@@ -292,7 +292,70 @@
       gear: 'Спортивки'
     };
 
-    // Загрузка данных из облака
+    // --- СИСТЕМА ОТРИСОВКИ ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
+    function loadImage(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+      });
+    }
+
+    async function drawHero() {
+      const canvas = document.getElementById('heroCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Слой 1: Базовая картинка
+      let baseImg = await loadImage('assets/patsan_base.png');
+      if (!baseImg) baseImg = await loadImage('assets/preview.jpg');
+
+      if (baseImg) {
+        ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffb74d';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Положи patsan_base.png в assets', canvas.width / 2, canvas.height / 2);
+      }
+
+      // Слой 2: Кепка
+      if (p.items.includes('cap')) {
+        const capImg = await loadImage('assets/gear_cap.png');
+        if (capImg) {
+          ctx.drawImage(capImg, 0, 0, canvas.width, canvas.height);
+        } else {
+          // Визуальная плашка, если спрайта gear_cap.png еще нет в папке
+          ctx.fillStyle = 'rgba(230, 81, 0, 0.85)';
+          ctx.fillRect(10, 10, 85, 22);
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('🧢 Кепка надета', 14, 25);
+        }
+      }
+
+      // Слой 3: Кастет
+      if (p.items.includes('knuckle')) {
+        const weaponImg = await loadImage('assets/gear_knuckle.png');
+        if (weaponImg) {
+          ctx.drawImage(weaponImg, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = 'rgba(211, 47, 47, 0.85)';
+          ctx.fillRect(10, 36, 95, 22);
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('🥊 Кастет в руке', 14, 51);
+        }
+      }
+    }
+
+    // --- ОБЛАЧНЫЙ ПРОФИЛЬ ---
     async function loadCloudProfile() {
       const statusEl = document.getElementById('cloudStatus');
       if (!supabase) {
@@ -324,7 +387,6 @@
         p.gear = data.gear;
         statusEl.innerText = '☁️ Облако подключено ✅';
       } else {
-        // Новый игрок — создаем запись в Supabase
         await supabase.from('players').insert([{
           tg_id: userTgId,
           name: userName,
@@ -354,10 +416,8 @@
       render();
     }
 
-    // Сохранение в облако (с дебаунсом, чтобы не спамить базу)
     let syncTimeout = null;
     function save() {
-      // Всегда дублируем локально
       localStorage.setItem('sc_seeds', p.seeds);
       localStorage.setItem('sc_phones', p.phones);
       localStorage.setItem('sc_energy', p.energy);
@@ -525,6 +585,9 @@
         document.getElementById('loot_wrench').innerText = '✅ В кармане';
         document.getElementById('loot_wrench').style.color = '#4caf50';
       }
+
+      // Отрисовываем пацана со всеми надетыми вещами на холсте
+      drawHero();
     }
 
     function tab(id, el) {
@@ -735,7 +798,6 @@
       if (p.friends > 0) { p.seeds += p.friends * 2; save(); }
     }, 10000);
 
-    // Старт
     loadCloudProfile();
   </script>
 </body>
