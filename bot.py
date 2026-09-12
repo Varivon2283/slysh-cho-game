@@ -76,30 +76,60 @@ async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
     await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
 # 2. Успешная оплата: начисление мобил в Supabase
+# 2. Успешная оплата: железобетонное начисление мобил в Supabase
 @dp.message(F.successful_payment)
 async def process_successful_payment(message: types.Message):
     payment = message.successful_payment
     user_id = message.from_user.id
     payload_str = payment.invoice_payload
 
+    print(f"--> ПОЛУЧЕНА ОПЛАТА от {user_id}! Payload: {payload_str}")
+
+    phones_to_add = 5  # дефолтное значение
+
+    # Парсим сколько мобил начислить
     try:
         payload = json.loads(payload_str)
         phones_to_add = int(payload.get("phones", 5))
+    except Exception as e:
+        print(f"Ошибка парсинга payload: {e}, начисляем дефолтные 5")
 
-        res = supabase.table("players").select("phones").eq("tg_id", user_id).single().execute()
-        if res.data:
-            current_phones = res.data.get("phones") or 0
+    try:
+        # Ищем игрока в базе (без single(), чтобы не падало)
+        res = supabase.table("players").select("phones").eq("tg_id", user_id).execute()
+        
+        if res.data and len(res.data) > 0:
+            current_phones = res.data[0].get("phones") or 0
+            new_phones = current_phones + phones_to_add
+            
             supabase.table("players").update({
-                "phones": current_phones + phones_to_add
+                "phones": new_phones
             }).eq("tg_id", user_id).execute()
 
+            print(f"✅ УСПЕХ: Начислено {phones_to_add} мобил игроку {user_id}. Теперь у него {new_phones} 📱")
+            
             await message.answer(
-                f"✅ <b>Донат получен!</b> Барыга подогнал <b>+{phones_to_add} 📱</b> в карман!",
+                f"✅ <b>Донат получен!</b> Барыга подогнал <b>+{phones_to_add} 📱</b> в карман!\n"
+                f"Перезайди в игру или обнови экран — баланс уже на базе!",
                 parse_mode="HTML"
             )
-            print(f"Начислено {phones_to_add} мобил игроку {user_id}")
+        else:
+            print(f"⚠️ Игрок с tg_id {user_id} не найден в таблице players при оплате!")
+            # Если почему-то игрока нет, создаем сразу с купленными мобилами
+            supabase.table("players").insert({
+                "tg_id": user_id,
+                "name": message.from_user.first_name,
+                "seeds": 50,
+                "phones": 2 + phones_to_add,
+                "energy": 50
+            }).execute()
+            await message.answer(
+                f"✅ <b>Донат получен!</b> Создан профиль и начислено <b>+{phones_to_add} 📱</b>!",
+                parse_mode="HTML"
+            )
     except Exception as err:
-        print(f"Ошибка при начислении звезд: {err}")
+        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА записи оплаты в Supabase: {err}")
+        await message.answer("Произошла техническая заминка при записи в базу, но оплата зафиксирована! Напиши админу.")
 
 # --- ВЕБ-СЕРВЕР (CORS + Генерация ссылок для Mini App) ---
 
