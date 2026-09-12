@@ -7,14 +7,26 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Marck+Script&family=Russo+One&display=swap');
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
     body {
       margin: 0; padding: 0;
-      background: #121212; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #11140e;
+      color: #2c251d;
+      font-family: 'Russo One', Impact, sans-serif;
       user-select: none;
-      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-      position: relative;
+      overflow-x: hidden;
+      display: flex; justify-content: center;
+      min-height: 100vh;
+    }
+
+    #gameBody {
+      width: 100%; max-width: 420px; min-height: 100vh;
+      display: flex; flex-direction: column; position: relative;
+      background: #252b20; box-shadow: 0 0 25px rgba(0,0,0,0.8);
+      padding-bottom: 75px; /* место под нижнюю ленту */
     }
 
     .shake { animation: screenShake 0.18s ease-in-out; }
@@ -38,366 +50,513 @@
       100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
     }
 
-    .hud {
-      display: grid; grid-template-columns: repeat(5, 1fr);
-      background: #1c1c1c; border-bottom: 2px solid #e65100;
-      padding: 6px 2px; text-align: center; font-size: 10px;
+    /* 1. ВЕРХНИЙ БЕТОННЫЙ HUD СО СКОЛОТЫМИ КРАЯМИ */
+    .hud-stone {
+      position: relative;
+      background: linear-gradient(180deg, #9b8a72 0%, #7d6b54 60%, #5d4d39 100%);
+      border: 3px solid #3d3122; border-bottom: 5px solid #231b12;
+      padding: 6px 8px 10px;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), 0 5px 12px rgba(0,0,0,0.6);
+      clip-path: polygon(0% 0%, 100% 0%, 100% 88%, 95% 94%, 88% 90%, 75% 98%, 55% 92%, 40% 99%, 20% 91%, 8% 97%, 0% 89%);
+      z-index: 10;
     }
-    .hud-num { font-size: 13px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
-    .hud-phones { color: #40c4ff; }
+
+    .hud-top-row { display: flex; align-items: center; gap: 8px; }
+
+    .hud-avatar {
+      width: 44px; height: 46px; background: #e4d8c5;
+      border: 2px solid #2c2115; box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+    }
+
+    .hud-bars { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
+
+    .curved-bar-wrap {
+      position: relative; height: 16px; background: #231b13;
+      border: 2px solid #140e09; border-radius: 9px 14px 11px 16px;
+      overflow: hidden; box-shadow: inset 0 2px 4px #000;
+    }
+
+    .curved-bar-fill { height: 100%; transition: width 0.3s ease; }
+    .fill-energy {
+      background: linear-gradient(180deg, #81c784 0%, #2e7d32 60%, #1b5e20 100%);
+      box-shadow: inset 0 2px 2px rgba(255,255,255,0.4);
+    }
+    .fill-hp {
+      background: linear-gradient(180deg, #e57373 0%, #c62828 60%, #8e0000 100%);
+      box-shadow: inset 0 2px 2px rgba(255,255,255,0.4);
+    }
+
+    .bar-text {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+    }
+
+    .hud-currencies { display: flex; gap: 4px; margin-top: 6px; justify-content: space-between; }
+    .wood-badge {
+      background: #e2d2b8; border: 2px solid #5a4632; border-radius: 4px;
+      padding: 2px 6px; font-size: 11px; color: #2b1f13;
+      display: flex; align-items: center; gap: 4px; box-shadow: 1px 2px 2px rgba(0,0,0,0.3);
+    }
+
+    /* 2. ПОДЪЕЗД С СОВЕТСКОЙ ЗЕЛЕНОЙ СТЕНОЙ */
+    .podiezd-bg {
+      position: relative;
+      background: linear-gradient(180deg, #c5bba8 0%, #a49780 44%, #2e4d34 45%, #1b3821 82%, #141713 83%, #0c0e0b 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      padding: 10px; min-height: 480px;
+    }
+
+    .mailboxes {
+      width: 95%; height: 56px; background: #394747; border: 3px solid #1c2626;
+      border-radius: 4px; margin-bottom: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 3px;
+    }
+    .mail-slot { background: #273333; border: 1px solid #141b1b; position: relative; }
+    .mail-slot::after {
+      content: ''; position: absolute; top: 8px; left: 15%; width: 70%; height: 3px; background: #0d1212;
+    }
+
+    .hero-canvas {
+      width: 100%; max-width: 320px; height: 230px;
+      background: transparent; display: block; margin: 0 auto;
+      filter: drop-shadow(0 8px 10px rgba(0,0,0,0.6));
+    }
+
+    /* 3. РВАНЫЙ ПЕРГАМЕНТ */
+    .paper-scroll {
+      background: #f1e6cf; border: 2px solid #5a452e;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.6), inset 0 0 20px rgba(168, 137, 89, 0.4);
+      position: relative; padding: 12px; margin: 8px 0; border-radius: 4px;
+      width: 100%; max-width: 320px;
+      clip-path: polygon(
+        0% 2%, 2% 0%, 98% 0%, 100% 3%, 99% 25%, 100% 50%, 98% 75%, 100% 98%, 97% 100%, 
+        3% 99%, 0% 97%, 1% 75%, 0% 50%, 2% 25%
+      );
+      color: #2b1f13;
+    }
+    .paper-scroll::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+      background: linear-gradient(90deg, #7c6042, #bda27f, #7c6042); border-bottom: 1px solid #4a341f;
+    }
+    .paper-title {
+      font-family: 'Marck Script', cursive, sans-serif; font-size: 22px;
+      text-align: center; color: #2f2214; margin: 0 0 8px; text-decoration: underline;
+    }
 
     .screen {
-      flex: 1; display: none; flex-direction: column;
-      align-items: center; padding: 12px; overflow-y: auto;
+      flex: 1; display: none; flex-direction: column; align-items: center;
+      padding: 10px; overflow-y: auto;
     }
     .screen.active { display: flex; }
 
-    /* Оформление холста персонажа */
-    .hero-canvas {
-      width: 100%; max-width: 320px; height: 180px;
-      border-radius: 10px; border: 2px solid #333;
-      background: #1a1a1a; margin-bottom: 8px;
-    }
-
     .bar-wrap {
-      width: 100%; max-width: 320px; background: #333;
+      width: 100%; max-width: 320px; background: #221a12;
       height: 12px; border-radius: 6px; overflow: hidden; margin: 4px 0 6px;
+      border: 1px solid #443322;
     }
-    .bar-fill-hp { height: 100%; background: #e53935; transition: width 0.2s; }
-    .bar-fill-enemy { height: 100%; background: #8e24aa; transition: width 0.2s; }
+    .bar-fill-hp { height: 100%; background: #c62828; transition: width 0.2s; }
+    .bar-fill-enemy { height: 100%; background: #6a1b9a; transition: width 0.2s; }
 
     .stats-box {
-      width: 100%; max-width: 320px; background: #1e1e1e;
-      border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5;
-      border: 1px solid #333;
+      width: 100%; max-width: 320px; background: #e8dcbe;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.5;
+      border: 2px solid #5a452e; color: #291c10;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.15);
     }
 
     .speech-bubble {
-      width: 100%; max-width: 320px; background: #262626;
-      border-left: 4px solid #e65100; padding: 8px 12px;
-      font-style: italic; font-size: 13px; color: #ffcc80;
-      margin-bottom: 8px; border-radius: 0 8px 8px 0;
+      width: 100%; max-width: 320px; background: #eedfc2;
+      border-left: 5px solid #825e1a; padding: 8px 12px;
+      font-style: italic; font-size: 12px; color: #3c2a13;
+      margin-bottom: 8px; border-radius: 0 6px 6px 0; border: 1px solid #7c6042;
     }
 
     .battle-log {
-      width: 100%; max-width: 320px; height: 95px; background: #0a0a0a;
-      border-radius: 8px; padding: 8px; font-size: 12px; overflow-y: auto;
-      border: 1px solid #333; color: #ccc; margin-bottom: 8px; text-align: left;
+      width: 100%; max-width: 320px; height: 85px; background: #1a1610;
+      border-radius: 6px; padding: 8px; font-size: 11px; overflow-y: auto;
+      border: 1px solid #4a3826; color: #dfd4be; margin-bottom: 8px; text-align: left;
     }
 
     .list-item {
-      width: 100%; max-width: 320px; background: #1e1e1e;
-      border: 1px solid #333; border-radius: 8px; padding: 9px;
-      margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+      width: 100%; max-width: 320px; background: #e8dcbe;
+      border: 2px solid #6c5438; border-radius: 6px; padding: 8px;
+      margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+      color: #291c10;
     }
+
+    .flock-btn {
+      background: linear-gradient(180deg, #dfd0b5 0%, #b89f7c 100%);
+      border: 2px solid #4a3826; border-bottom: 4px solid #291c10;
+      border-radius: 4px; color: #291c10; font-family: 'Russo One', sans-serif;
+      font-size: 11px; padding: 6px 12px; cursor: pointer;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .flock-btn:active { transform: translateY(2px); border-bottom: 2px solid #291c10; }
 
     .btn {
-      background: #e65100; color: #fff; border: none;
-      padding: 9px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;
+      background: linear-gradient(180deg, #8a6c4b 0%, #5d462f 100%);
+      color: #fff; border: 1px solid #291c10; border-bottom: 3px solid #1c130b;
+      padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer;
+      font-size: 11px; font-family: 'Russo One', sans-serif;
     }
-    .btn:active { transform: scale(0.97); }
-    .btn-boss { background: linear-gradient(180deg, #b71c1c, #d32f2f); box-shadow: 0 0 10px rgba(211,47,47,0.4); }
-    .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
-    .btn-blue { background: #0288d1; }
+    .btn:active { transform: translateY(1px); border-bottom: 1px solid #1c130b; }
+    .btn-boss { background: linear-gradient(180deg, #b71c1c, #7f0000); }
+    .btn-gold { background: linear-gradient(180deg, #ffd54f, #ff8f00); color: #2e1d05; }
+    .btn-blue { background: linear-gradient(180deg, #4fc3f7, #0277bd); }
 
-    .nav-bar { display: flex; background: #181818; border-top: 1px solid #333; }
-    .nav-tab {
-      flex: 1; text-align: center; padding: 10px 0; font-size: 9px;
-      color: #777; cursor: pointer;
+    /* Верхние переключатели меню PlayFlock */
+    .flock-tabs {
+      display: flex; gap: 4px; width: 100%; max-width: 320px; margin-bottom: 8px;
     }
-    .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
+    .flock-tab {
+      flex: 1; background: #463826; border: 2px solid #261d12;
+      color: #d8c8b0; font-size: 10px; padding: 6px 0;
+      text-align: center; border-radius: 4px 4px 0 0; cursor: pointer;
+    }
+    .flock-tab.active { background: #8b7152; color: #fff; border-bottom: none; font-weight: bold; }
 
-    #cloudStatus {
-      font-size: 10px; color: #888; text-align: center; margin-bottom: 4px;
+    /* 4. НИЖНЯЯ ПАНЕЛЬ: ПОЛАРОИДЫ КОРЕШЕЙ */
+    .crew-strip {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 420px;
+      background: linear-gradient(180deg, #6c5a45 0%, #463725 100%);
+      border-top: 3px solid #231b12; padding: 5px 6px;
+      display: flex; align-items: center; gap: 6px; overflow-x: auto;
+      z-index: 100; box-shadow: 0 -4px 10px rgba(0,0,0,0.6);
+    }
+    .polaroid-card {
+      background: #eae2cf; border: 2px solid #261c13; border-radius: 3px;
+      padding: 3px 3px 5px; width: 56px; flex-shrink: 0;
+      text-align: center; box-shadow: 2px 2px 4px rgba(0,0,0,0.4); cursor: pointer; position: relative;
+    }
+    .polaroid-photo {
+      width: 100%; height: 42px; background: #a69883;
+      border: 1px solid #5a4b39; display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .polaroid-lvl {
+      position: absolute; top: 1px; right: 1px;
+      background: #241a12; color: #ffd54f; font-size: 8px; padding: 1px 3px; border-radius: 2px;
+    }
+    .polaroid-name {
+      font-size: 8px; color: #261c13; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
   </style>
 </head>
 <body id="gameBody">
 
-  <!-- HUD -->
-  <div class="hud">
-    <div>🌻 Семки<div class="hud-num" id="hudSeeds">0</div></div>
-    <div>📱 Мобилы<div class="hud-num hud-phones" id="hudPhones">0</div></div>
-    <div>⚡ Энергия<div class="hud-num"><span id="hudEnergy">50</span>/50</div></div>
-    <div>❤️ ХП<div class="hud-num"><span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div></div>
-    <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
+  <!-- ВЕРХНИЙ БЕТОННЫЙ HUD СО СКОЛОМ -->
+  <div class="hud-stone">
+    <div class="hud-top-row">
+      <div class="hud-avatar">🧢</div>
+      <div class="hud-bars">
+        <div class="curved-bar-wrap">
+          <div id="hudEnergyBar" class="curved-bar-fill fill-energy" style="width: 100%;"></div>
+          <div class="bar-text">⚡ ЭНЕРГИЯ: <span id="hudEnergy">50</span>/<span id="hudMaxEnergy">50</span></div>
+        </div>
+        <div class="curved-bar-wrap">
+          <div id="hudHpBar" class="curved-bar-fill fill-hp" style="width: 100%;"></div>
+          <div class="bar-text">❤️ ХП: <span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ресурсы на фанерках -->
+    <div class="hud-currencies">
+      <div class="wood-badge">🌻 <b id="hudSeeds">0</b></div>
+      <div class="wood-badge">📱 <b id="hudPhones">0</b></div>
+      <div class="wood-badge">💪 <b id="statStr">5</b></div>
+      <div class="wood-badge">⭐ Чин: <b id="hudLevel">1</b></div>
+    </div>
   </div>
 
-  <!-- ДВОР (ХОЛСТ ВМЕСТО КАРТИНКИ) -->
-  <div class="screen active" id="screenHome">
-    <div id="cloudStatus">☁️ Подключение к облаку...</div>
-    <h3 style="margin: 2px 0 6px;" id="heroName">Четкий пацан</h3>
-    
-    <canvas id="heroCanvas" width="320" height="180" class="hero-canvas"></canvas>
+  <div id="cloudStatus" style="font-size: 10px; color: #ccc; text-align: center; margin: 4px 0;">☁️ Подключение к облаку...</div>
 
-    <!-- ЕЖЕДНЕВНЫЙ ПОДГОН -->
-    <div style="width: 100%; max-width: 320px; background: #1f1d14; border: 1px solid #ffd600; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+  <!-- ВКЛАДКИ МЕНЮ -->
+  <div style="display: flex; justify-content: center; width: 100%;">
+    <div class="flock-tabs">
+      <div class="flock-tab active" onclick="tab('screenHome', this)">Подъезд 🚪</div>
+      <div class="flock-tab" onclick="tab('screenFight', this)">Район 👊</div>
+      <div class="flock-tab" onclick="tab('screenGym', this)">Качалка 🏋️</div>
+      <div class="flock-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
+      <div class="flock-tab" onclick="tab('screenTop', this); loadLeaderboard();">Топ 👑</div>
+      <div class="flock-tab" onclick="tab('screenLoot', this)">Хабар 🎒</div>
+      <div class="flock-tab" onclick="tab('screenCrew', this); loadGangData();">Братва 👥</div>
+    </div>
+  </div>
+
+  <!-- ДВОР / ПОДЪЕЗД -->
+  <div class="screen active podiezd-bg" id="screenHome">
+    <!-- Почтовые ящики подъезда -->
+    <div class="mailboxes">
+      <div class="mail-slot"></div>
+      <div class="mail-slot"></div>
+      <div class="mail-slot"></div>
+      <div class="mail-slot"></div>
+      <div class="mail-slot"></div>
+    </div>
+
+    <h3 style="margin: 0 0 4px; color: #dfd4be; text-shadow: 1px 1px 2px #000;" id="heroName">Четкий пацан</h3>
+    
+    <!-- Холст пацана на кортах -->
+    <canvas id="heroCanvas" width="300" height="230" class="hero-canvas" style="cursor: pointer;" onclick="p.seeds++; spawnDmgText('+1 🌻', false, event); tg?.HapticFeedback?.impactOccurred('light'); save(); render();"></canvas>
+
+    <!-- ДНЕВНОЙ ГРЕВ -->
+    <div class="paper-scroll" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <b style="color: #ffd600; font-size: 12px;">📅 Дневной грев</b>
-        <div style="font-size: 10px; color: #bbb;">Серия: <span id="streakCountText">1</span>-й день</div>
+        <b style="font-size: 12px;">📅 Дневной грев</b>
+        <div style="font-size: 10px; color: #665239;">Серия: <span id="streakCountText">1</span>-й день</div>
       </div>
-      <button id="btnDailyBonus" class="btn btn-gold" style="font-size: 11px; padding: 6px 12px;" onclick="claimDailyReward()">Забрать</button>
+      <button id="btnDailyBonus" class="flock-btn" onclick="claimDailyReward()">Забрать</button>
     </div>
 
-    <!-- КРЫШЕВАНИЕ ОБЪЕКТОВ (ОФЛАЙН ДОХОД) -->
-    <div style="width: 100%; max-width: 320px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <b style="font-size: 12px; color: #81c784;">🏪 Крышевание точек</b>
-        <span style="font-size: 10px; color: #888;">Капает в карман</span>
+    <!-- КРЫШЕВАНИЕ ОБЪЕКТОВ -->
+    <div class="paper-scroll">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <b style="font-size: 12px;">🏪 Касса с района:</b>
+          <div style="font-size: 13px; color: #825e1a; font-weight: bold;"><span id="afkSeedsText">0</span> 🌻</div>
+        </div>
+        <button id="btnClaimAfk" class="flock-btn" onclick="claimAfkIncome()">Снять долю</button>
       </div>
-      <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">
-        Накопилось: <b id="afkSeedsText" style="color: #ffd600;">0</b> 🌻
-      </div>
-      <button id="btnClaimAfk" class="btn" style="width: 100%; background: #2e7d32; font-size: 11px; padding: 7px;" onclick="claimAfkIncome()">
-        💰 Снять кассу с района
-      </button>
     </div>
 
-    <div style="width: 100%; max-width: 320px; text-align: left; font-size: 11px; color: #aaa;">Здоровье:</div>
-    <div class="bar-wrap"><div class="bar-fill-hp" id="heroHpBar"></div></div>
-
+    <!-- СТАТЫ ПЕРСОНАЖА -->
     <div class="stats-box">
-      <div>💪 Сила: <b id="statStr">5</b> <span id="bonusStr" style="color: #4caf50;"></span></div>
-      <div>⚡ Ловкость: <b id="statAgi">5</b> <span id="bonusAgi" style="color: #4caf50;"></span></div>
-      <div>🛡 Выносливость: <b id="statVit">10</b> <span id="bonusVit" style="color: #4caf50;"></span></div>
+      <div>💪 Сила: <b id="statStrBox">5</b> <span id="bonusStr" style="color: #2e7d32;"></span></div>
+      <div>⚡ Ловкость: <b id="statAgi">5</b> <span id="bonusAgi" style="color: #2e7d32;"></span></div>
+      <div>🛡 Выносливость: <b id="statVit">10</b> <span id="bonusVit" style="color: #2e7d32;"></span></div>
       <div>Погремуха: <b id="rankName">Шнырь</b></div>
-      <div style="margin-top: 4px; font-size: 11px; color: #888;">Шмот: <span id="equippedText">Спортивки</span></div>
+      <div style="margin-top: 4px; font-size: 11px; color: #6d5438;">Шмот: <span id="equippedText">Спортивки</span></div>
     </div>
-    
+
     <div style="width: 100%; max-width: 320px; display: flex; gap: 8px; margin-top: 8px;">
-      <button class="btn" style="flex: 1; background: #2e7d32;" onclick="healPlayer()">💊 Подлечиться (10 🌻)</button>
-      <button class="btn" style="flex: 1; background: #d84315;" onclick="claimDailyBonus()">🎁 Грев с зоны</button>
+      <button class="flock-btn" style="flex: 1;" onclick="healPlayer()">💊 Лечиться (10 🌻)</button>
+      <button class="flock-btn" style="flex: 1;" onclick="claimDailyBonus()">🎁 Зона</button>
     </div>
   </div>
 
   <!-- РАЙОН -->
   <div class="screen" id="screenFight">
     <div style="width: 100%; max-width: 320px; text-align: center; margin-bottom: 4px;">
-      <b id="enemyTitle" style="font-size: 14px;">Выбери цель</b>
+      <b id="enemyTitle" style="font-size: 14px; color: #dfd4be;">Выбери цель</b>
       <div class="bar-wrap"><div class="bar-fill-enemy" id="enemyHpBar" style="width: 0%;"></div></div>
     </div>
 
     <div class="speech-bubble" id="enemyQuote" style="display: none;">— Слышь, ты с какого раёна?</div>
     <div class="battle-log" id="battleLog">Район шумит... Кому объясним за шмот?</div>
 
-<!-- МИРОВОЙ БОСС (РЕЙД) -->
-    <div style="width: 100%; max-width: 320px; background: linear-gradient(180deg, #311b1b, #1a1a1a); border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 14px; box-shadow: 0 0 10px rgba(211,47,47,0.3);">
+    <!-- РЕЙД-БОСС -->
+    <div class="paper-scroll" style="border: 2px solid #8e0000; background: #fae8e8;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <span style="font-size: 10px; color: #ff8a80; font-weight: bold; text-transform: uppercase;">⚠️ Общая угроза раёну!</span>
-        <span id="raidStatusBadge" style="font-size: 10px; background: #d32f2f; color: #fff; padding: 2px 6px; border-radius: 4px;">АКТИВЕН</span>
+        <span style="font-size: 10px; color: #c62828; font-weight: bold;">⚠️ ОБЩАЯ УГРОЗА!</span>
+        <span id="raidStatusBadge" style="font-size: 9px; background: #c62828; color: #fff; padding: 1px 5px; border-radius: 3px;">АКТИВЕН</span>
       </div>
-      <b id="raidBossName" style="font-size: 13px; color: #fff;">🚨 Полковник ОМОНа Громов</b>
-      
-      <div class="hp-bar-wrap" style="height: 14px; margin: 6px 0;">
-        <div id="raidBossHpBar" class="hp-bar" style="width: 100%; background: linear-gradient(90deg, #d32f2f, #ff5252);"></div>
+      <b id="raidBossName" style="font-size: 13px; color: #331111;">🚨 Полковник ОМОНа Громов</b>
+      <div class="bar-wrap" style="height: 14px; margin: 4px 0;">
+        <div id="raidBossHpBar" class="bar-fill-hp" style="width: 100%;"></div>
       </div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 8px;">
-        <span>Здоровье: <b id="raidBossHpText" style="color:#fff;">10000 / 10000</b></span>
-        <span>Куш: <b style="color: #ffd600;">+5000 🌻</b></span>
+      <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 6px;">
+        <span>ХП: <b id="raidBossHpText">10000 / 10000</b></span>
+        <span>Куш: <b style="color: #b78103;">+5000 🌻</b></span>
       </div>
-
-      <button id="btnRaidHit" class="btn btn-danger" style="width: 100%; font-size: 12px; padding: 8px;" onclick="hitRaidBoss(event)">
-        💥 Всей толпой на босса (-5 ⚡)
-      </button>
+      <button id="btnRaidHit" class="btn btn-boss" style="width: 100%;" onclick="hitRaidBoss(event)">💥 Навалиться толпой (-5 ⚡)</button>
     </div>
-    
-    <div id="districtList" style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 8px;">
-      <button class="btn" onclick="startCombat(1)">🧢 Докопаться до Школьника (-5 ⚡)</button>
-      <button class="btn" onclick="startCombat(2)">🕶 Осадить Мажора (-10 ⚡)</button>
-      <button class="btn" onclick="startCombat(3)">👊 Стрела со Смотрящим (-15 ⚡)</button>
+
+    <div id="districtList" style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 6px;">
+      <button class="flock-btn" onclick="startCombat(1)">🧢 Докопаться до Школьника (-5 ⚡)</button>
+      <button class="flock-btn" onclick="startCombat(2)">🕶 Осадить Мажора (-10 ⚡)</button>
+      <button class="flock-btn" onclick="startCombat(3)">👊 Стрела со Смотрящим (-15 ⚡)</button>
       <button class="btn btn-boss" onclick="startCombat(4)">☠️ БОСС: Михалыч Трудовик (-20 ⚡)</button>
     </div>
 
     <div id="combatControls" style="width: 100%; max-width: 320px; display: none; gap: 8px;">
-      <button class="btn" id="attackBtn" style="flex: 2; background: #d32f2f;" onclick="strikeEnemy(event)">Врезать по морде! 👊</button>
-      <button class="btn" style="flex: 1; background: #555;" onclick="runAway()">Смыться 🏃</button>
+      <button class="btn btn-boss" id="attackBtn" style="flex: 2;" onclick="strikeEnemy(event)">Врезать по морде! 👊</button>
+      <button class="flock-btn" style="flex: 1;" onclick="runAway()">Смыться 🏃</button>
     </div>
   </div>
 
   <!-- КАЧАЛКА -->
   <div class="screen" id="screenGym">
-    <h3 style="margin: 0 0 10px;">Подвальная качалка</h3>
-    <div class="list-item">
-      <div><b>Жим штанги</b><br><small>+1 к Силе</small></div>
-      <button class="btn" onclick="upgrade('str')"><span id="cStr">20</span> 🌻</button>
-    </div>
-    <div class="list-item">
-      <div><b>Турник во дворе</b><br><small>+1 к Ловкости</small></div>
-      <button class="btn" onclick="upgrade('agi')"><span id="cAgi">20</span> 🌻</button>
-    </div>
-    <div class="list-item">
-      <div><b>Бой с тенью</b><br><small>+1 к Выносливости (+10 ХП)</small></div>
-      <button class="btn" onclick="upgrade('vit')"><span id="cVit">20</span> 🌻</button>
+    <div class="paper-scroll">
+      <div class="paper-title">Подвальная качалка</div>
+      <div class="list-item">
+        <div><b>Жим штанги</b><br><small>+1 к Силе</small></div>
+        <button class="flock-btn" onclick="upgrade('str')"><span id="cStr">20</span> 🌻</button>
+      </div>
+      <div class="list-item">
+        <div><b>Турник во дворе</b><br><small>+1 к Ловкости</small></div>
+        <button class="flock-btn" onclick="upgrade('agi')"><span id="cAgi">20</span> 🌻</button>
+      </div>
+      <div class="list-item">
+        <div><b>Бой с тенью</b><br><small>+1 к Выносливости (+10 ХП)</small></div>
+        <button class="flock-btn" onclick="upgrade('vit')"><span id="cVit">20</span> 🌻</button>
+      </div>
     </div>
   </div>
 
   <!-- ЛАРЕК -->
   <div class="screen" id="screenShop">
-    <h3 style="margin: 0 0 8px;">Ларёк «У Ашота»</h3>
-    <!-- УЛИЧНЫЕ НАПЁРСТКИ -->
-    <div style="width: 100%; max-width: 320px; background: #161616; border: 2px dashed #ffb74d; border-radius: 10px; padding: 12px; margin-bottom: 16px; text-align: center;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <b style="color: #ffb74d; font-size: 13px;">🎲 Напёрстки у Барыги</b>
-        <span style="font-size: 10px; background: #333; padding: 2px 6px; border-radius: 4px; color: #aaa;">Куш x2</span>
+    <!-- НАПЁРСТКИ -->
+    <div class="paper-scroll" style="text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <b style="font-size: 13px;">🎲 Напёрстки у Барыги</b>
+        <span style="font-size: 10px; background: #6b553e; color: #fff; padding: 1px 5px; border-radius: 3px;">Куш x2</span>
       </div>
-      <p style="font-size: 11px; color: #888; margin: 0 0 12px;">Кручу-верчу, запутать хочу! Под каким стаканом семка?</p>
-
-      <!-- ТРИ НАПЁРСТКА -->
-      <div style="display: flex; justify-content: space-around; align-items: flex-end; height: 75px; margin-bottom: 12px; position: relative;">
-        <div id="cup0" onclick="chooseThimble(0)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
-        <div id="cup1" onclick="chooseThimble(1)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
-        <div id="cup2" onclick="chooseThimble(2)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
+      <div style="display: flex; justify-content: space-around; align-items: flex-end; height: 70px; margin-bottom: 8px;">
+        <div id="cup0" onclick="chooseThimble(0)" style="font-size: 38px; cursor: pointer; transition: transform 0.3s;">🪙</div>
+        <div id="cup1" onclick="chooseThimble(1)" style="font-size: 38px; cursor: pointer; transition: transform 0.3s;">🪙</div>
+        <div id="cup2" onclick="chooseThimble(2)" style="font-size: 38px; cursor: pointer; transition: transform 0.3s;">🪙</div>
       </div>
-
-      <div id="thimbleStatus" style="font-size: 11px; color: #ffd600; min-height: 16px; margin-bottom: 8px;">Сделай ставку и выбери напёрсток</div>
-
-      <!-- ВЫБОР СТАВКИ -->
-      <div style="display: flex; gap: 6px; justify-content: center;">
-        <button class="btn" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(20)">Ставка 20 🌻</button>
-        <button class="btn" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(50)">Ставка 50 🌻</button>
-        <button class="btn btn-gold" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(100)">Ставка 100 🌻</button>
+      <div id="thimbleStatus" style="font-size: 11px; color: #825e1a; min-height: 16px; margin-bottom: 6px;">Ставь и тыкай в стакан</div>
+      <div style="display: flex; gap: 4px; justify-content: center;">
+        <button class="flock-btn" onclick="playThimbles(20)">20 🌻</button>
+        <button class="flock-btn" onclick="playThimbles(50)">50 🌻</button>
+        <button class="flock-btn btn-gold" onclick="playThimbles(100)">100 🌻</button>
       </div>
     </div>
-    <div class="list-item">
-      <div><b>Кепка-восьмиклинка</b><br><small>+3 к Ловкости</small></div>
-      <button class="btn" id="item_cap" onclick="buyGear('cap', 50, 0, 3, 0, 'Кепка-восьмиклинка')">50 🌻</button>
-    </div>
-    <div class="list-item">
-      <div><b>Кастет свинцовый</b><br><small>+6 к Силе</small></div>
-      <button class="btn" id="item_knuckle" onclick="buyGear('knuckle', 180, 6, 0, 0, 'Кастет')">180 🌻</button>
-    </div>
-    <div class="list-item">
-      <div><b>Кожаный плащ</b><br><small>+12 к Выносливости</small></div>
-      <button class="btn" id="item_coat" onclick="buyGear('coat', 350, 0, 0, 12, 'Кожаный плащ')">350 🌻</button>
+
+    <!-- ШМОТ -->
+    <div class="paper-scroll">
+      <div class="paper-title">Шмот у Ашота</div>
+      <div class="list-item">
+        <div><b>Кепка-восьмиклинка</b><br><small>+3 к Ловкости</small></div>
+        <button class="flock-btn" id="item_cap" onclick="buyGear('cap', 50, 0, 3, 0, 'Кепка-восьмиклинка')">50 🌻</button>
+      </div>
+      <div class="list-item">
+        <div><b>Кастет свинцовый</b><br><small>+6 к Силе</small></div>
+        <button class="flock-btn" id="item_knuckle" onclick="buyGear('knuckle', 180, 6, 0, 0, 'Кастет')">180 🌻</button>
+      </div>
+      <div class="list-item">
+        <div><b>Кожаный плащ</b><br><small>+12 к Выносливости</small></div>
+        <button class="flock-btn" id="item_coat" onclick="buyGear('coat', 350, 0, 0, 12, 'Кожаный плащ')">350 🌻</button>
+      </div>
     </div>
 
-    <h4 style="margin: 12px 0 6px; color: #40c4ff;">Скупка у Барыги (За мобилы 📱)</h4>
-    <div class="list-item">
-      <div><b>Мешок семок (500 шт)</b><br><small>Мгновенно разбогатеть</small></div>
-      <button class="btn btn-blue" onclick="buySeedsForPhones(1, 500)">1 📱</button>
-    </div>
-    <div class="list-item">
-      <div><b>Банка Flash</b><br><small>Фулл энергия (50 ⚡)</small></div>
-      <button class="btn btn-blue" onclick="restoreEnergyForPhone()">1 📱</button>
-    </div>
-
-    <h4 style="margin: 14px 0 6px; color: #ffd600;">⭐ Покупка Мобил (Telegram Stars)</h4>
-    <div class="list-item">
-      <div><b>Пачка мобил (5 📱)</b><br><small>Быстрый старт</small></div>
-      <button class="btn" style="background: #ffd600; color: #000;" onclick="buyStars('small')">25 ⭐️</button>
-    </div>
-    <div class="list-item">
-      <div><b>Пакет мобил (15 📱)</b><br><small>Выгодный подгон</small></div>
-      <button class="btn" style="background: #ffd600; color: #000;" onclick="buyStars('medium')">65 ⭐️</button>
-    </div>
-    <div class="list-item">
-      <div><b>Чемодан мобил (50 📱)</b><br><small>Авторитет раёна</small></div>
-      <button class="btn" style="background: #ffd600; color: #000;" onclick="buyStars('big')">199 ⭐️</button>
+    <!-- МОБИЛЫ / ДОНАТ -->
+    <div class="paper-scroll">
+      <div style="font-weight: bold; margin-bottom: 6px;">⭐ Мобилы и Донат (Stars)</div>
+      <div class="list-item">
+        <div><b>Мешок семок (500 шт)</b></div>
+        <button class="btn btn-blue" onclick="buySeedsForPhones(1, 500)">1 📱</button>
+      </div>
+      <div class="list-item">
+        <div><b>Банка Flash (50 ⚡)</b></div>
+        <button class="btn btn-blue" onclick="restoreEnergyForPhone()">1 📱</button>
+      </div>
+      <div class="list-item">
+        <div><b>Пачка мобил (5 📱)</b></div>
+        <button class="flock-btn btn-gold" onclick="buyStars('small')">25 ⭐️</button>
+      </div>
+      <div class="list-item">
+        <div><b>Чемодан мобил (50 📱)</b></div>
+        <button class="flock-btn btn-gold" onclick="buyStars('big')">199 ⭐️</button>
+      </div>
     </div>
   </div>
 
   <!-- ХАБАР -->
   <div class="screen" id="screenLoot">
-    <h3 style="margin: 0 0 6px;">Хабар со дворов</h3>
-    <div id="setBonusAlert" style="display: none; background: #2e7d32; padding: 6px 12px; border-radius: 6px; font-size: 11px; margin-bottom: 8px;">
-      👑 Сет собран! +10 ко всем статам активировано!
-    </div>
-    <div class="list-item">
-      <div>🥇 <b>Золотая фикса</b><br><small>Падает с Мажора</small></div>
-      <div id="loot_fixa" style="color: #666;">Не найдено</div>
-    </div>
-    <div class="list-item">
-      <div>🔥 <b>Зажигалка Cricket</b><br><small>Падает со Школьника</small></div>
-      <div id="loot_lighter" style="color: #666;">Не найдено</div>
-    </div>
-    <div class="list-item">
-      <div>🔩 <b>Ключ на 32</b><br><small>Падает с Михалыча</small></div>
-      <div id="loot_wrench" style="color: #666;">Не найдено</div>
+    <div class="paper-scroll">
+      <div class="paper-title">Хабар со дворов</div>
+      <div id="setBonusAlert" style="display: none; background: #c8e6c9; border: 1px solid #388e3c; padding: 6px; border-radius: 4px; font-size: 11px; margin-bottom: 6px;">
+        👑 Сет собран! +10 ко всем статам!
+      </div>
+      <div class="list-item">
+        <div>🥇 <b>Золотая фикса</b><br><small>С Мажора</small></div>
+        <div id="loot_fixa" style="color: #777;">Не найдено</div>
+      </div>
+      <div class="list-item">
+        <div>🔥 <b>Зажигалка Cricket</b><br><small>Со Школьника</small></div>
+        <div id="loot_lighter" style="color: #777;">Не найдено</div>
+      </div>
+      <div class="list-item">
+        <div>🔩 <b>Ключ на 32</b><br><small>С Михалыча</small></div>
+        <div id="loot_wrench" style="color: #777;">Не найдено</div>
+      </div>
     </div>
   </div>
 
   <!-- БРАТВА -->
-  <!-- ЭКРАН БРИГАДЫ И РЕФЕРАЛОВ -->
   <div class="screen" id="screenCrew">
-    <h3 style="margin: 0 0 6px;">Бригада & Братва</h3>
-    <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 12px;">
-      В одиночку район не удержать. Собирай банду и держи общак!
-    </p>
+    <div class="paper-scroll">
+      <div class="paper-title">Бригада района</div>
+      <div style="font-size: 11px; margin-bottom: 6px;">Твои кореша: <b id="friendsCount">0</b> чел.</div>
+      <button class="flock-btn btn-gold" style="width: 100%; margin-bottom: 10px;" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
 
-    <!-- БЛОК РЕФЕРАЛОВ -->
-    <div style="width: 100%; max-width: 320px; background: #222; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-      <div style="font-size: 12px; margin-bottom: 6px;">Твои кореша: <b id="friendsCount" style="color: #ffb74d;">0</b> чел.</div>
-      <div style="font-size: 11px; color: #888; margin-bottom: 10px;">Каждый кореш приносит пассивные семки в карман!</div>
-      <button class="btn btn-gold" style="width: 100%;" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
-    </div>
-
-    <!-- БЛОК БРИГАДЫ (ЕСЛИ СОСТОИТ) -->
-    <div id="gangActiveBox" style="display: none; width: 100%; max-width: 320px; background: #1c221c; border: 1px solid #2e7d32; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-      <div style="font-size: 11px; color: #81c784;">Твоя группировка:</div>
-      <h3 id="myGangName" style="margin: 4px 0 8px; color: #fff;">—</h3>
-      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px;">
-        <span>Общак: <b id="myGangBank" style="color: #ffd600;">0</b> 🌻</span>
-        <span>Бойцов: <b id="myGangMembers">1</b></span>
+      <div id="gangActiveBox" style="display: none; border-top: 1px dashed #6c5438; padding-top: 8px;">
+        <div>Группировка: <b id="myGangName">—</b></div>
+        <div>Общак: <b id="myGangBank" style="color:#825e1a;">0</b> 🌻 | Бойцов: <b id="myGangMembers">1</b></div>
+        <button class="flock-btn" style="width: 100%; margin-top: 6px;" onclick="depositToGangBank()">💰 Закинуть 50 🌻 в общак</button>
       </div>
-      <button class="btn" style="width: 100%; background: #2e7d32;" onclick="depositToGangBank()">💰 Закинуть 50 🌻 в общак</button>
+
+      <div id="gangCreateBox" style="display: none; border-top: 1px dashed #6c5438; padding-top: 8px;">
+        <b>Создать свою банду (100 🌻, 1 📱)</b>
+        <input type="text" id="newGangName" placeholder="Погоняло банды" maxlength="20" style="width: 100%; padding: 6px; margin: 6px 0; border: 1px solid #6c5438; border-radius: 4px; background: #fff;" />
+        <button class="flock-btn" style="width: 100%;" onclick="createGang()">⚡ Сформировать бригаду</button>
+      </div>
     </div>
 
-    <!-- БЛОК СОЗДАНИЯ / ВСТУПЛЕНИЯ В БРИГАДУ (ЕСЛИ НЕТ БАНДЫ) -->
-    <div id="gangCreateBox" style="display: none; width: 100%; max-width: 320px; background: #222; border: 1px solid #444; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-      <div style="font-size: 13px; font-weight: bold; margin-bottom: 6px;">Создать свою банду</div>
-      <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Цена создания: 100 семок и 1 мобила</div>
-      <input type="text" id="newGangName" placeholder="Название банды (напр. Центровые)" maxlength="20" style="width: 100%; box-sizing: border-box; padding: 8px; background: #111; border: 1px solid #444; color: #fff; border-radius: 6px; font-size: 12px; margin-bottom: 8px;" />
-      <button class="btn" style="width: 100%;" onclick="createGang()">⚡ Скоротать бригаду</button>
-    </div>
-
-    <!-- СПИСОК ТОП БРИГАД -->
-    <h4 style="margin: 8px 0 6px; color: #ffb74d;">Топ Группировок</h4>
-    <div style="width: 100%; max-width: 320px;" id="gangsLeaderboard">
-      <div style="text-align: center; color: #888; font-size: 12px;">Подтягиваем список банд...</div>
+    <div class="paper-scroll">
+      <b style="font-size: 12px;">Топ Группировок</b>
+      <div id="gangsLeaderboard" style="margin-top: 6px;"></div>
     </div>
   </div>
 
-  <!-- ЭКРАН ТОПА И PVP -->
+  <!-- ТОП И PVP -->
   <div class="screen" id="screenTop">
-    <h3 style="margin: 0 0 6px;">Смотрящие за Районом</h3>
-    <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">
-      Самые опасные пацаны. Выбей их с пьедестала!
-    </p>
-
-    <button class="btn btn-boss" style="width: 100%; max-width: 320px; margin-bottom: 12px;" onclick="pvpFindOpponent()">
-      🥊 Наехать на реального пацана (-10 ⚡)
-    </button>
-
-    <div id="pvpResultBox" style="display: none; width: 100%; max-width: 320px; background: #222; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12px;"></div>
-
-    <div style="width: 100%; max-width: 320px;" id="leaderboardList">
-      <div style="text-align: center; color: #888;">Загрузка авторитетов...</div>
+    <div class="paper-scroll">
+      <div class="paper-title">Смотрящие за Районом</div>
+      <button class="btn btn-boss" style="width: 100%; margin-bottom: 10px;" onclick="pvpFindOpponent()">🥊 Наехать на пацана (-10 ⚡)</button>
+      <div id="pvpResultBox" style="display: none; background: #fff; border: 1px solid #888; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 11px;"></div>
+      <div id="leaderboardList"></div>
     </div>
   </div>
 
-  <!-- НАВИГАЦИЯ -->
- <div class="nav-bar">
-    <div class="nav-tab active" onclick="tab('screenHome', this)">Двор 🏠</div>
-    <div class="nav-tab" onclick="tab('screenFight', this)">Район 👊</div>
-    <div class="nav-tab" onclick="tab('screenGym', this)">Качалка 🏋️</div>
-    <div class="nav-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
-    <div class="nav-tab" onclick="tab('screenTop', this); loadLeaderboard();">Топ 👑</div>
-    <div class="nav-tab" onclick="tab('screenLoot', this)">Хабар 🎒</div>
-    <div class="nav-tab" onclick="tab('screenCrew', this); loadGangData();">Братва 👥</div>
+  <!-- НИЖНЯЯ ПАНЕЛЬ: ПОЛАРОИДЫ КОРЕШЕЙ -->
+  <div class="crew-strip">
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">15</span>
+      <div class="polaroid-photo">🧔</div>
+      <div class="polaroid-name">Смотрящий</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">9</span>
+      <div class="polaroid-photo">👱</div>
+      <div class="polaroid-name">Кабан</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">6</span>
+      <div class="polaroid-photo">🕶️</div>
+      <div class="polaroid-name">Лысый</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">3</span>
+      <div class="polaroid-photo">🧢</div>
+      <div class="polaroid-name">Ты</div>
+    </div>
+    <div class="polaroid-card" onclick="inviteFriends()">
+      <span class="polaroid-lvl">+</span>
+      <div class="polaroid-photo" style="background: #dfd4be; font-size: 20px;">➕</div>
+      <div class="polaroid-name" style="color: #7b5828;">Позвать</div>
+    </div>
   </div>
-  
+
   <script>
-    const RENDER_BACKEND_URL = 'https://slysh-cho-game.onrender.com'
+    const RENDER_BACKEND_URL = 'https://slysh-cho-game.onrender.com';
     const SUPABASE_URL = 'https://tdnvnbpyuiwuytpaucih.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_gXMjGOLhnY4I9hwGSqM-SA_jIe_rBN9';
-    
+
     let sbClient = null;
     try {
       if (SUPABASE_URL && SUPABASE_URL.indexOf('YOUR_PROJECT') === -1) {
         sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       }
     } catch(e) {
-      console.error("Ошибка инициализации Supabase:", e);
+      console.error("Ошибка Supabase:", e);
     }
 
     const tg = window.Telegram?.WebApp;
@@ -429,66 +588,448 @@
       biz: { kiosk: 1, carwash: 0, market: 0 }
     };
 
-    // --- ОТРИСОВКА ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
-    function loadImage(src) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.src = src;
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-      });
+    // Заглушка для звуков (без падений)
+    function playSound() {}
+
+    function triggerShake() {
+      const b = document.getElementById('gameBody');
+      b.classList.remove('shake');
+      void b.offsetWidth;
+      b.classList.add('shake');
     }
 
-    async function drawHero() {
+    function spawnDmgText(text, isCrit, event) {
+      const el = document.createElement('div');
+      el.className = 'dmg-popup' + (isCrit ? ' crit' : '');
+      el.innerText = text;
+      const x = event ? event.clientX : window.innerWidth / 2;
+      const y = event ? event.clientY - 20 : window.innerHeight / 2;
+      el.style.left = (x - 20) + 'px';
+      el.style.top = y + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 650);
+    }
+
+    // --- ОТРИСОВКА ПАЦАНА НА CANVAS В СТИЛЕ PLAYFLOCK ---
+    function drawPatsanAvatar() {
       const canvas = document.getElementById('heroCanvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      let baseImg = await loadImage('assets/patsan_base.png');
-      if (!baseImg) baseImg = await loadImage('assets/preview.jpg');
+      const cx = canvas.width / 2;
+      const cy = 8;
 
-      if (baseImg) {
-        ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+
+      // Тень на асфальте
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 205, 75, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Обувь / педали
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#1b140e";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(cx - 36, cy + 198, 18, 9, -0.15, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx + 36, cy + 198, 18, 9, 0.15, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Ноги / икры
+      ctx.fillStyle = "#dfa980";
+      ctx.beginPath();
+      ctx.roundRect(cx - 44, cy + 145, 20, 48, 6);
+      ctx.roundRect(cx + 24, cy + 145, 20, 48, 6);
+      ctx.fill(); ctx.stroke();
+
+      // Шорты с лампасами
+      ctx.fillStyle = "#f3f0e6";
+      ctx.beginPath();
+      ctx.moveTo(cx - 46, cy + 105);
+      ctx.lineTo(cx + 46, cy + 105);
+      ctx.lineTo(cx + 52, cy + 152);
+      ctx.lineTo(cx + 8, cy + 152);
+      ctx.lineTo(cx, cy + 120);
+      ctx.lineTo(cx - 8, cy + 152);
+      ctx.lineTo(cx - 52, cy + 152);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = "#e67e22";
+      ctx.fillRect(cx - 50, cy + 130, 8, 20);
+      ctx.fillRect(cx + 42, cy + 130, 8, 20);
+
+      // Руки и плечи
+      ctx.fillStyle = "#dfa980";
+      ctx.beginPath();
+      ctx.moveTo(cx - 48, cy + 56);
+      ctx.quadraticCurveTo(cx - 72, cy + 85, cx - 64, cy + 120);
+      ctx.lineTo(cx - 48, cy + 120);
+      ctx.quadraticCurveTo(cx - 52, cy + 85, cx - 36, cy + 62);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx + 48, cy + 56);
+      ctx.quadraticCurveTo(cx + 72, cy + 85, cx + 64, cy + 120);
+      ctx.lineTo(cx + 48, cy + 120);
+      ctx.quadraticCurveTo(cx + 52, cy + 85, cx + 36, cy + 62);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // Кулаки
+      ctx.beginPath();
+      ctx.arc(cx - 56, cy + 126, 11, 0, Math.PI * 2);
+      ctx.arc(cx + 56, cy + 126, 11, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Торс: Майка-алкоголичка
+      ctx.fillStyle = "#f5f3eb";
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, cy + 52);
+      ctx.lineTo(cx - 42, cy + 62);
+      ctx.lineTo(cx - 36, cy + 108);
+      ctx.lineTo(cx + 36, cy + 108);
+      ctx.lineTo(cx + 42, cy + 62);
+      ctx.lineTo(cx + 24, cy + 52);
+      ctx.quadraticCurveTo(cx, cy + 68, cx - 24, cy + 52);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // Мышцы груди
+      ctx.strokeStyle = "#c2baa8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 18, cy + 76); ctx.lineTo(cx - 2, cy + 82);
+      ctx.moveTo(cx + 18, cy + 76); ctx.lineTo(cx + 2, cy + 82);
+      ctx.moveTo(cx, cy + 82); ctx.lineTo(cx, cy + 104);
+      ctx.stroke();
+
+      // Шея и кулон
+      ctx.strokeStyle = "#1b140e";
+      ctx.lineWidth = 3;
+      ctx.fillStyle = "#dfa980";
+      ctx.fillRect(cx - 12, cy + 42, 24, 16);
+      ctx.strokeRect(cx - 12, cy + 42, 24, 16);
+
+      ctx.strokeStyle = "#2e7d32";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy + 64, 7, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Голова и лицо
+      ctx.fillStyle = "#dfa980";
+      ctx.strokeStyle = "#1b140e";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 30, 20, 23, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Короткая стрижка
+      ctx.fillStyle = "#1e1e1e";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 16, 20, 12, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Темные очки
+      ctx.fillStyle = "#151515";
+      ctx.beginPath();
+      ctx.ellipse(cx - 8, cy + 29, 6, 4, 0.1, 0, Math.PI * 2);
+      ctx.ellipse(cx + 8, cy + 29, 6, 4, -0.1, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      ctx.strokeStyle = "#151515";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy + 28); ctx.lineTo(cx + 4, cy + 28);
+      ctx.stroke();
+
+      // Ухмылка
+      ctx.beginPath();
+      ctx.arc(cx + 2, cy + 42, 6, 0.2, Math.PI - 0.4);
+      ctx.stroke();
+    }
+
+    let enemy = null;
+    const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
+    const quotes = [
+      "— Слышь, мелочь есть? А если найду?",
+      "— Ты с какого раёна вообще зарулил?",
+      "— Стоять! Две мобилы с камерой есть позвонить?",
+      "— Поясни за шмот быстро!"
+    ];
+
+    const roster = {
+      1: { name: "Школьник", hp: 35, str: 3, agi: 2, rew: 15, drop: 'lighter', cost: 5 },
+      2: { name: "Мажор", hp: 80, str: 7, agi: 6, rew: 45, drop: 'fixa', cost: 10 },
+      3: { name: "Смотрящий", hp: 160, str: 12, agi: 9, rew: 110, drop: null, cost: 15 },
+      4: { name: "☠️ Трудовик Михалыч", hp: 350, str: 18, agi: 12, rew: 300, drop: 'wrench', cost: 20 }
+    };
+
+    function hasFullSet() {
+      return p.loot.includes('lighter') && p.loot.includes('fixa') && p.loot.includes('wrench');
+    }
+
+    function getEffectiveStr() { return p.str + (hasFullSet() ? 10 : 0); }
+    function getEffectiveAgi() { return p.agi + (hasFullSet() ? 10 : 0); }
+    function getEffectiveVit() { return p.vit + (hasFullSet() ? 10 : 0); }
+    function maxHp() { return getEffectiveVit() * 10; }
+
+    function render() {
+      document.getElementById('hudSeeds').innerText = p.seeds;
+      document.getElementById('hudPhones').innerText = p.phones;
+      document.getElementById('hudEnergy').innerText = p.energy;
+      document.getElementById('hudMaxEnergy').innerText = p.maxEnergy;
+      document.getElementById('hudHp').innerText = p.hp;
+      document.getElementById('hudMaxHp').innerText = maxHp();
+      document.getElementById('hudLevel').innerText = p.level;
+
+      // Обновляем волнистые бары PlayFlock
+      const energyPct = Math.max(0, Math.min(100, (p.energy / p.maxEnergy) * 100));
+      const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp()) * 100));
+      const eBar = document.getElementById('hudEnergyBar');
+      const hBar = document.getElementById('hudHpBar');
+      if (eBar) eBar.style.width = energyPct + '%';
+      if (hBar) hBar.style.width = hpPct + '%';
+
+      document.getElementById('statStr').innerText = getEffectiveStr();
+      document.getElementById('statStrBox').innerText = p.str;
+      document.getElementById('statAgi').innerText = p.agi;
+      document.getElementById('statVit').innerText = p.vit;
+      document.getElementById('equippedText').innerText = p.gear;
+      document.getElementById('friendsCount').innerText = p.friends;
+
+      const isSet = hasFullSet();
+      document.getElementById('bonusStr').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('bonusAgi').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('bonusVit').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('setBonusAlert').style.display = isSet ? 'block' : 'none';
+
+      const rankIdx = Math.min(ranks.length - 1, Math.floor(p.level / 2));
+      document.getElementById('rankName').innerText = ranks[rankIdx];
+
+      document.getElementById('cStr').innerText = p.str * 6;
+      document.getElementById('cAgi').innerText = p.agi * 6;
+      document.getElementById('cVit').innerText = p.vit * 4;
+
+      p.items.forEach(id => {
+        const b = document.getElementById('item_' + id);
+        if (b) { b.innerText = 'Надето'; b.disabled = true; b.style.opacity = '0.7'; }
+      });
+
+      if (p.loot.includes('lighter')) {
+        document.getElementById('loot_lighter').innerText = '✅ В кармане';
+        document.getElementById('loot_lighter').style.color = '#2e7d32';
+      }
+      if (p.loot.includes('fixa')) {
+        document.getElementById('loot_fixa').innerText = '✅ В кармане';
+        document.getElementById('loot_fixa').style.color = '#2e7d32';
+      }
+      if (p.loot.includes('wrench')) {
+        document.getElementById('loot_wrench').innerText = '✅ В кармане';
+        document.getElementById('loot_wrench').style.color = '#2e7d32';
+      }
+
+      drawPatsanAvatar();
+    }
+
+    function tab(id, el) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.flock-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (el) el.classList.add('active');
+      if (id === 'screenFight') loadRaidBoss();
+    }
+
+    function log(txt) {
+      const l = document.getElementById('battleLog');
+      l.innerHTML += `<div>${txt}</div>`;
+      l.scrollTop = l.scrollHeight;
+    }
+
+    function claimDailyBonus() {
+      const today = new Date().toDateString();
+      if (p.lastDaily === today) return alert('Грев уже получен! Заходи завтра.');
+      p.lastDaily = today;
+      p.seeds += 100;
+      p.phones += 1;
+      p.energy = p.maxEnergy;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      alert('Грев с зоны подогнал +100 семок, +1 Мобилу 📱 и зарядил энергию!');
+      save();
+    }
+
+    function healPlayer() {
+      if (p.hp >= maxHp()) return alert('Здоров как бык!');
+      if (p.seeds < 10) return alert('Не хватает 10 семок!');
+      p.seeds -= 10;
+      p.hp = maxHp();
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    function upgrade(stat) {
+      const cost = stat === 'vit' ? p.vit * 4 : p[stat] * 6;
+      if (p.seeds < cost) return alert('Не хватает семок!');
+      p.seeds -= cost;
+      p[stat]++;
+      if (stat === 'vit') p.hp += 10;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    function buyGear(id, cost, s, a, v, name) {
+      if (p.seeds < cost) return alert('Мало семок!');
+      p.seeds -= cost;
+      p.str += s; p.agi += a; p.vit += v;
+      p.items.push(id);
+      p.gear = name;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    function buySeedsForPhones(costPhones, gainSeeds) {
+      if (p.phones < costPhones) return alert('Не хватает мобил! Зови корешей.');
+      p.phones -= costPhones;
+      p.seeds += gainSeeds;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    function restoreEnergyForPhone() {
+      if (p.phones < 1) return alert('Нужна 1 мобила 📱!');
+      p.phones -= 1;
+      p.energy = p.maxEnergy;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      alert('Энергия восстановлена на максимум!');
+      save();
+    }
+
+    function inviteFriends() {
+      const botUsername = 'slysh_cho_bot';
+      const myId = userTgId;
+      const url = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(url);
       } else {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffb74d';
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Положи patsan_base.png в assets', canvas.width / 2, canvas.height / 2);
-      }
-
-      if (p.items.includes('cap')) {
-        const capImg = await loadImage('assets/gear_cap.png');
-        if (capImg) {
-          ctx.drawImage(capImg, 0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.fillStyle = 'rgba(230, 81, 0, 0.85)';
-          ctx.fillRect(10, 10, 85, 22);
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 11px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('🧢 Кепка надета', 14, 25);
-        }
-      }
-
-      if (p.items.includes('knuckle')) {
-        const weaponImg = await loadImage('assets/gear_knuckle.png');
-        if (weaponImg) {
-          ctx.drawImage(weaponImg, 0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.fillStyle = 'rgba(211, 47, 47, 0.85)';
-          ctx.fillRect(10, 36, 95, 22);
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 11px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('🥊 Кастет в руке', 14, 51);
-        }
+        navigator.clipboard?.writeText(`https://t.me/${botUsername}?start=${myId}`);
+        alert('Инвайт-ссылка скопирована!');
       }
     }
 
-    // --- ОБЛАКО / ЛОКАЛЬНЫЙ РЕЖИМ ---
+    function startCombat(id) {
+      if (p.hp <= 15) return alert('Ты еле дышишь! Подлечись.');
+      const t = roster[id];
+      if (p.energy < t.cost) return alert('Нет энергии!');
+
+      p.energy -= t.cost;
+      enemy = { ...t, curHp: t.hp, maxHp: t.hp };
+
+      const q = quotes[Math.floor(Math.random() * quotes.length)];
+      const qBox = document.getElementById('enemyQuote');
+      qBox.innerText = q;
+      qBox.style.display = 'block';
+
+      document.getElementById('enemyTitle').innerText = `${enemy.name} (${enemy.curHp} HP)`;
+      document.getElementById('enemyHpBar').style.width = '100%';
+      document.getElementById('battleLog').innerHTML = `Разборка началась! Противник: <b>${enemy.name}</b><br>`;
+
+      document.getElementById('districtList').style.display = 'none';
+      document.getElementById('combatControls').style.display = 'flex';
+      save();
+    }
+
+    function strikeEnemy(e) {
+      if (!enemy) return;
+      tg?.HapticFeedback?.impactOccurred('medium');
+      triggerShake();
+
+      const effStr = getEffectiveStr();
+      const effAgi = getEffectiveAgi();
+
+      const dodge = Math.random() < (enemy.agi * 0.025);
+      if (dodge) {
+        log(`💨 ${enemy.name} увернулся!`);
+        spawnDmgText('МИМО', false, e);
+      } else {
+        const crit = Math.random() < (effAgi * 0.025);
+        let dmg = Math.max(3, effStr + Math.floor(Math.random() * 4));
+        if (crit) {
+          dmg = Math.floor(dmg * 1.8);
+          log(`💥 <b>КРИТ В ЧЕЛЮСТЬ!</b> -${dmg}`);
+          spawnDmgText(`-${dmg} 💥`, true, e);
+        } else {
+          log(`👊 Ты пробил на <b>${dmg}</b> урона!`);
+          spawnDmgText(`-${dmg}`, false, e);
+        }
+        enemy.curHp -= dmg;
+      }
+
+      if (enemy.curHp <= 0) {
+        log(`🏆 <b>${enemy.name} повержен!</b> +${enemy.rew} семок!`);
+        p.seeds += enemy.rew;
+        p.level++;
+
+        if (enemy.drop && !p.loot.includes(enemy.drop) && Math.random() < 0.35) {
+          p.loot.push(enemy.drop);
+          alert('🔥 Отжат редкий хабар! Проверь вкладку «Хабар».');
+        }
+
+        tg?.HapticFeedback?.notificationOccurred('success');
+        resetCombat();
+        return;
+      }
+
+      setTimeout(() => {
+        const heroDodge = Math.random() < (effAgi * 0.03);
+        if (heroDodge) {
+          log(`⚡ Ты увернулся от выпада!`);
+        } else {
+          let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
+          p.hp = Math.max(0, p.hp - eDmg);
+          triggerShake();
+          log(`🤕 Враг ответил на <b>${eDmg}</b> урона!`);
+        }
+
+        if (p.hp <= 0) {
+          tg?.HapticFeedback?.notificationOccurred('error');
+          alert('Тебя вырубили! Ты очнулся и потерял часть семок.');
+          p.seeds = Math.floor(p.seeds * 0.7);
+          p.hp = 25;
+          resetCombat();
+        } else {
+          document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
+          document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
+          save();
+        }
+      }, 230);
+
+      document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
+      document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
+      save();
+    }
+
+    function runAway() {
+      log('🏃 Ты дал дёру по дворам...');
+      resetCombat();
+    }
+
+    function resetCombat() {
+      enemy = null;
+      document.getElementById('districtList').style.display = 'flex';
+      document.getElementById('combatControls').style.display = 'none';
+      document.getElementById('enemyQuote').style.display = 'none';
+      document.getElementById('enemyTitle').innerText = "Выбери цель";
+      document.getElementById('enemyHpBar').style.width = '0%';
+      save();
+    }
+
+    // --- ОБЛАКО И СОХРАНЕНИЕ ---
     async function loadCloudProfile() {
       const statusEl = document.getElementById('cloudStatus');
       if (!sbClient) {
@@ -519,11 +1060,11 @@
           p.items = data.items || [];
           p.loot = data.loot || [];
           p.gear = data.gear;
-          statusEl.innerText = '☁️ Облако подключено ✅';
           p.streak = data.daily_streak || 0;
           p.lastStreakDate = data.last_streak_date;
           p.lastClaimTime = data.last_claim_time ? new Date(data.last_claim_time).getTime() : Date.now();
           p.biz = data.businesses || { kiosk: 1, carwash: 0, market: 0 };
+          statusEl.innerText = '☁️ Облако подключено ✅';
           checkDailyStreakUI();
           calcAfkIncome();
         } else {
@@ -537,8 +1078,8 @@
           statusEl.innerText = '☁️ Новый пацан зарегистрирован в облаке!';
         }
       } catch (err) {
-        console.warn("Ошибка загрузки профиля:", err);
-        statusEl.innerText = '💾 Ошибка облака (включен локальный режим)';
+        console.warn("Ошибка загрузки:", err);
+        statusEl.innerText = '💾 Локальный режим';
         loadLocal();
       }
       render();
@@ -609,458 +1150,313 @@
       }
     }
 
-    // --- ЗВУКОВОЙ ДВИЖОК ---
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    let actx = null;
-    function playSound(type) {
+    // РЕЙД-БОСС
+    let raidBossData = null;
+    let raidHitCooldown = false;
+
+    async function loadRaidBoss() {
+      if (!sbClient) return;
       try {
-        if (!actx) actx = new AudioCtx();
-        const osc = actx.createOscillator();
-        const gain = actx.createGain();
-        osc.connect(gain);
-        gain.connect(actx.destination);
-        const now = actx.currentTime;
+        const { data, error } = await sbClient.from('world_boss').select('*').eq('id', 1).single();
+        if (error || !data) return;
+        raidBossData = data;
 
-        if (type === 'hit') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
-          gain.gain.setValueAtTime(0.3, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-          osc.start(now); osc.stop(now + 0.12);
-        } else if (type === 'crit') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(280, now);
-          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
-          gain.gain.setValueAtTime(0.4, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-          osc.start(now); osc.stop(now + 0.25);
-        } else if (type === 'coin') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(600, now);
-          osc.frequency.setValueAtTime(900, now + 0.08);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
-          osc.start(now); osc.stop(now + 0.2);
+        const hpPct = Math.max(0, (data.cur_hp / data.max_hp) * 100);
+        document.getElementById('raidBossName').innerText = data.name;
+        document.getElementById('raidBossHpText').innerText = `${Math.max(0, data.cur_hp)} / ${data.max_hp}`;
+        document.getElementById('raidBossHpBar').style.width = hpPct + '%';
+
+        const badge = document.getElementById('raidStatusBadge');
+        const btn = document.getElementById('btnRaidHit');
+
+        if (data.cur_hp <= 0 || data.status === 'defeated') {
+          badge.innerText = 'ОБЛАВА ОТБИТА';
+          badge.style.background = '#2e7d32';
+          btn.disabled = true;
+          btn.innerText = '🏆 Босс повержен!';
+        } else {
+          badge.innerText = 'АКТИВЕН';
+          badge.style.background = '#c62828';
+          btn.disabled = false;
+          btn.innerText = '💥 Навалиться толпой (-5 ⚡)';
         }
-      } catch (e) {}
-    }
-
-    function triggerShake() {
-      const b = document.getElementById('gameBody');
-      b.classList.remove('shake');
-      void b.offsetWidth;
-      b.classList.add('shake');
-    }
-
-    function spawnDmgText(text, isCrit, event) {
-      const el = document.createElement('div');
-      el.className = 'dmg-popup' + (isCrit ? ' crit' : '');
-      el.innerText = text;
-      const x = event ? event.clientX : window.innerWidth / 2;
-      const y = event ? event.clientY - 20 : window.innerHeight / 2;
-      el.style.left = (x - 20) + 'px';
-      el.style.top = y + 'px';
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 650);
-    }
-
-    let enemy = null;
-    const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
-    const quotes = [
-      "— Слышь, мелочь есть? А если найду?",
-      "— Ты с какого раёна вообще зарулил?",
-      "— Стоять! Две мобилы с камерой есть позвонить?",
-      "— Поясни за шмот быстро!"
-    ];
-
-    const roster = {
-      1: { name: "Школьник", hp: 35, str: 3, agi: 2, rew: 15, drop: 'lighter', cost: 5 },
-      2: { name: "Мажор", hp: 80, str: 7, agi: 6, rew: 45, drop: 'fixa', cost: 10 },
-      3: { name: "Смотрящий", hp: 160, str: 12, agi: 9, rew: 110, drop: null, cost: 15 },
-      4: { name: "☠️ Трудовик Михалыч", hp: 350, str: 18, agi: 12, rew: 300, drop: 'wrench', cost: 20 }
-    };
-
-    function hasFullSet() {
-      return p.loot.includes('lighter') && p.loot.includes('fixa') && p.loot.includes('wrench');
-    }
-
-    function getEffectiveStr() { return p.str + (hasFullSet() ? 10 : 0); }
-    function getEffectiveAgi() { return p.agi + (hasFullSet() ? 10 : 0); }
-    function getEffectiveVit() { return p.vit + (hasFullSet() ? 10 : 0); }
-    function maxHp() { return getEffectiveVit() * 10; }
-
-    function render() {
-      document.getElementById('hudSeeds').innerText = p.seeds;
-      document.getElementById('hudPhones').innerText = p.phones;
-      document.getElementById('hudEnergy').innerText = p.energy;
-      document.getElementById('hudHp').innerText = p.hp;
-      document.getElementById('hudMaxHp').innerText = maxHp();
-      document.getElementById('hudLevel').innerText = p.level;
-
-      document.getElementById('statStr').innerText = p.str;
-      document.getElementById('statAgi').innerText = p.agi;
-      document.getElementById('statVit').innerText = p.vit;
-      document.getElementById('equippedText').innerText = p.gear;
-      document.getElementById('friendsCount').innerText = p.friends;
-
-      const isSet = hasFullSet();
-      document.getElementById('bonusStr').innerText = isSet ? '(+10 Сет)' : '';
-      document.getElementById('bonusAgi').innerText = isSet ? '(+10 Сет)' : '';
-      document.getElementById('bonusVit').innerText = isSet ? '(+10 Сет)' : '';
-      document.getElementById('setBonusAlert').style.display = isSet ? 'block' : 'none';
-
-      const rankIdx = Math.min(ranks.length - 1, Math.floor(p.level / 2));
-      document.getElementById('rankName').innerText = ranks[rankIdx];
-      document.getElementById('heroHpBar').style.width = Math.max(0, (p.hp / maxHp() * 100)) + '%';
-
-      document.getElementById('cStr').innerText = p.str * 6;
-      document.getElementById('cAgi').innerText = p.agi * 6;
-      document.getElementById('cVit').innerText = p.vit * 4;
-
-      p.items.forEach(id => {
-        const b = document.getElementById('item_' + id);
-        if (b) { b.innerText = 'Надето'; b.disabled = true; b.style.background = '#444'; }
-      });
-
-      if (p.loot.includes('lighter')) {
-        document.getElementById('loot_lighter').innerText = '✅ В кармане';
-        document.getElementById('loot_lighter').style.color = '#4caf50';
-      }
-      if (p.loot.includes('fixa')) {
-        document.getElementById('loot_fixa').innerText = '✅ В кармане';
-        document.getElementById('loot_fixa').style.color = '#4caf50';
-      }
-      if (p.loot.includes('wrench')) {
-        document.getElementById('loot_wrench').innerText = '✅ В кармане';
-        document.getElementById('loot_wrench').style.color = '#4caf50';
-      }
-
-      drawHero();
-      drawPatsanAvatar();
-    }
-
-    // ТАБЫ (ВКЛАДКИ)
-    function tab(id, el) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-      el.classList.add('active');
-      if (id === 'screenFight') {
-        loadRaidBoss();
+      } catch (err) {
+        console.error("Ошибка рейд-босса:", err);
       }
     }
 
-    function log(txt) {
-      const l = document.getElementById('battleLog');
-      l.innerHTML += `<div>${txt}</div>`;
-      l.scrollTop = l.scrollHeight;
-    }
+    async function hitRaidBoss(e) {
+      if (!raidBossData) return;
+      if (raidBossData.cur_hp <= 0) return alert("Босс уже повержен!");
+      if (p.energy < 5) return alert("Не хватает энергии! Нужно 5 ⚡");
+      if (raidHitCooldown) return alert("Переведи дух!");
 
-    function claimDailyBonus() {
-      const today = new Date().toDateString();
-      if (p.lastDaily === today) return alert('Грев уже получен! Заходи завтра.');
-      p.lastDaily = today;
-      p.seeds += 100;
-      p.phones += 1;
-      p.energy = p.maxEnergy;
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      alert('Грев с зоны подогнал +100 семок, +1 Мобилу 📱 и зарядил энергию!');
+      raidHitCooldown = true;
+      setTimeout(() => { raidHitCooldown = false; }, 1500);
+
+      p.energy -= 5;
       save();
-    }
 
-    function healPlayer() {
-      if (p.hp >= maxHp()) return alert('Здоров как бык!');
-      if (p.seeds < 10) return alert('Не хватает 10 семок!');
-      p.seeds -= 10;
-      p.hp = maxHp();
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      save();
-    }
-
-    function upgrade(stat) {
-      const cost = stat === 'vit' ? p.vit * 4 : p[stat] * 6;
-      if (p.seeds < cost) return alert('Не хватает семок!');
-      p.seeds -= cost;
-      p[stat]++;
-      if (stat === 'vit') p.hp += 10;
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      save();
-    }
-
-    function buyGear(id, cost, s, a, v, name) {
-      if (p.seeds < cost) return alert('Мало семок!');
-      p.seeds -= cost;
-      p.str += s; p.agi += a; p.vit += v;
-      p.items.push(id);
-      p.gear = name;
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      save();
-    }
-
-    function buySeedsForPhones(costPhones, gainSeeds) {
-      if (p.phones < costPhones) return alert('Не хватает мобил! Зови корешей.');
-      p.phones -= costPhones;
-      p.seeds += gainSeeds;
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      save();
-    }
-
-    function restoreEnergyForPhone() {
-      if (p.phones < 1) return alert('Нужна 1 мобила 📱!');
-      p.phones -= 1;
-      p.energy = p.maxEnergy;
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      alert('Энергия восстановлена на максимум!');
-      save();
-    }
-
-    function inviteFriends() {
-      const botUsername = 'slysh_cho_bot';
-      const myId = userTgId;
-      const url = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
-      if (tg?.openTelegramLink) {
-        tg.openTelegramLink(url);
-      } else {
-        navigator.clipboard?.writeText(`https://t.me/${botUsername}?start=${myId}`);
-        alert('Инвайт-ссылка скопирована!');
-      }
-    }
-
-    function startCombat(id) {
-      if (p.hp <= 15) return alert('Ты еле дышишь! Подлечись.');
-      const t = roster[id];
-      if (p.energy < t.cost) return alert('Нет энергии!');
-
-      p.energy -= t.cost;
-      enemy = { ...t, curHp: t.hp, maxHp: t.hp };
-
-      const q = quotes[Math.floor(Math.random() * quotes.length)];
-      const qBox = document.getElementById('enemyQuote');
-      qBox.innerText = q;
-      qBox.style.display = 'block';
-
-      document.getElementById('enemyTitle').innerText = `${enemy.name} (${enemy.curHp} HP)`;
-      document.getElementById('enemyHpBar').style.width = '100%';
-      document.getElementById('battleLog').innerHTML = `Разборка началась! Противник: <b>${enemy.name}</b><br>`;
-
-      document.getElementById('districtList').style.display = 'none';
-      document.getElementById('combatControls').style.display = 'flex';
-      save();
-    }
-
-    function strikeEnemy(e) {
-      if (!enemy) return;
-      tg?.HapticFeedback?.impactOccurred('medium');
+      tg?.HapticFeedback?.impactOccurred('heavy');
       triggerShake();
 
       const effStr = getEffectiveStr();
-      const effAgi = getEffectiveAgi();
+      let dmg = Math.max(10, effStr * 3 + Math.floor(Math.random() * 10));
 
-      const dodge = Math.random() < (enemy.agi * 0.025);
-      if (dodge) {
-        log(`💨 ${enemy.name} увернулся!`);
-        spawnDmgText('МИМО', false, e);
-      } else {
-        const crit = Math.random() < (effAgi * 0.025);
-        let dmg = Math.max(3, effStr + Math.floor(Math.random() * 4));
-        if (crit) {
-          dmg = Math.floor(dmg * 1.8);
-          playSound('crit');
-          log(`💥 <b>КРИТ В ЧЕЛЮСТЬ!</b> -${dmg}`);
-          spawnDmgText(`-${dmg} 💥`, true, e);
-        } else {
-          playSound('hit');
-          log(`👊 Ты пробил на <b>${dmg}</b> урона!`);
-          spawnDmgText(`-${dmg}`, false, e);
-        }
-        enemy.curHp -= dmg;
-      }
+      spawnDmgText(`-${dmg} 💥`, true, e);
 
-      if (enemy.curHp <= 0) {
-        playSound('coin');
-        log(`🏆 <b>${enemy.name} повержен!</b> +${enemy.rew} семок!`);
-        p.seeds += enemy.rew;
-        p.level++;
+      raidBossData.cur_hp = Math.max(0, raidBossData.cur_hp - dmg);
+      const hpPct = Math.max(0, (raidBossData.cur_hp / raidBossData.max_hp) * 100);
+      document.getElementById('raidBossHpText').innerText = `${raidBossData.cur_hp} / ${raidBossData.max_hp}`;
+      document.getElementById('raidBossHpBar').style.width = hpPct + '%';
 
-        if (enemy.drop && !p.loot.includes(enemy.drop) && Math.random() < 0.35) {
-          p.loot.push(enemy.drop);
-          alert('🔥 Отжат редкий хабар! Проверь вкладку «Хабар».');
-        }
+      p.seeds += Math.floor(dmg / 2);
+      save();
 
-        tg?.HapticFeedback?.notificationOccurred('success');
-        resetCombat();
-        return;
-      }
+      try {
+        const isDefeated = raidBossData.cur_hp <= 0;
+        await sbClient.from('world_boss').update({
+          cur_hp: raidBossData.cur_hp,
+          status: isDefeated ? 'defeated' : 'alive',
+          updated_at: new Date().toISOString()
+        }).eq('id', 1);
 
-      setTimeout(() => {
-        const heroDodge = Math.random() < (effAgi * 0.03);
-        if (heroDodge) {
-          log(`⚡ Ты увернулся от выпада!`);
-        } else {
-          let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
-          p.hp = Math.max(0, p.hp - eDmg);
-          playSound('hit');
-          triggerShake();
-          log(`🤕 Враг ответил на <b>${eDmg}</b> урона!`);
-        }
-
-        if (p.hp <= 0) {
-          tg?.HapticFeedback?.notificationOccurred('error');
-          alert('Тебя вырубили! Ты очнулся и потерял часть семок.');
-          p.seeds = Math.floor(p.seeds * 0.7);
-          p.hp = 25;
-          resetCombat();
-        } else {
-          document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
-          document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
+        if (isDefeated) {
+          p.seeds += 500;
+          alert("🎉 Финальный удар нанесён! Район свободен! +500 🌻!");
           save();
+          loadRaidBoss();
         }
-      }, 230);
+      } catch (err) {
+        console.error("Ошибка обновления босса:", err);
+      }
+    }
 
-      document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
-      document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
+    // АФК ДОХОД
+    function calcAfkIncome() {
+      const now = Date.now();
+      const diffMinutes = Math.floor((now - p.lastClaimTime) / 60000);
+      const ratePerMinute = (p.biz.kiosk * 1) + (p.biz.carwash * 3) + (p.biz.market * 8);
+      const accumulated = Math.min(diffMinutes, 480) * ratePerMinute;
+      const el = document.getElementById('afkSeedsText');
+      if (el) el.innerText = accumulated;
+      return accumulated;
+    }
+
+    async function claimAfkIncome() {
+      const amount = calcAfkIncome();
+      if (amount <= 0) return alert("Пока касса пустая!");
+      p.seeds += amount;
+      p.lastClaimTime = Date.now();
       save();
+      tg?.HapticFeedback?.notificationOccurred('success');
+      alert(`Снял с района +${amount} 🌻!`);
+      calcAfkIncome();
+
+      if (sbClient) {
+        await sbClient.from('players').update({
+          seeds: p.seeds,
+          last_claim_time: new Date().toISOString()
+        }).eq('tg_id', userTgId);
+      }
     }
 
-    function runAway() {
-      log('🏃 Ты дал дёру по дворам...');
-      resetCombat();
+    // ДНЕВНОЙ СТРИК
+    function checkDailyStreakUI() {
+      const today = new Date().toISOString().slice(0, 10);
+      const btn = document.getElementById('btnDailyBonus');
+      const streakText = document.getElementById('streakCountText');
+      if (!btn || !streakText) return;
+
+      streakText.innerText = (p.streak || 0) + 1;
+      if (p.lastStreakDate === today) {
+        btn.disabled = true;
+        btn.innerText = 'Получено ✅';
+        btn.style.opacity = '0.7';
+      } else {
+        btn.disabled = false;
+        btn.innerText = 'Забрать';
+        btn.style.opacity = '1';
+      }
     }
 
-    function resetCombat() {
-      enemy = null;
-      document.getElementById('districtList').style.display = 'flex';
-      document.getElementById('combatControls').style.display = 'none';
-      document.getElementById('enemyQuote').style.display = 'none';
-      document.getElementById('enemyTitle').innerText = "Выбери цель";
-      document.getElementById('enemyHpBar').style.width = '0%';
+    async function claimDailyReward() {
+      const today = new Date().toISOString().slice(0, 10);
+      if (p.lastStreakDate === today) return alert("Сегодня ты уже забирал подгон!");
+
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      p.streak = (p.lastStreakDate === yesterday) ? ((p.streak || 0) + 1) : 1;
+
+      const dayBonus = p.streak % 7;
+      let rewardSeeds = 50 * (dayBonus === 0 ? 7 : dayBonus);
+      let rewardPhones = dayBonus === 0 ? 1 : 0;
+
+      p.seeds += rewardSeeds;
+      p.phones += rewardPhones;
+      p.lastStreakDate = today;
       save();
+
+      tg?.HapticFeedback?.notificationOccurred('success');
+      let msg = `📅 Подгон за ${p.streak}-й день получен!\n+${rewardSeeds} 🌻`;
+      if (rewardPhones > 0) msg += ` и +${rewardPhones} 📱!`;
+      alert(msg);
+
+      checkDailyStreakUI();
+
+      if (sbClient) {
+        await sbClient.from('players').update({
+          seeds: p.seeds,
+          phones: p.phones,
+          daily_streak: p.streak,
+          last_streak_date: today
+        }).eq('tg_id', userTgId);
+      }
     }
 
-    setInterval(() => {
-      if (p.energy < p.maxEnergy) { p.energy++; save(); }
-    }, 3000);
+    // НАПЁРСТКИ
+    let thimbleBet = 0;
+    let thimbleWinningIndex = -1;
+    let isThimbleShuffling = false;
 
-    setInterval(() => {
-      if (p.friends > 0) { p.seeds += p.friends * 2; save(); }
-    }, 10000);
+    function playThimbles(bet) {
+      if (isThimbleShuffling) return;
+      if (p.seeds < bet) return alert("Не хватает семок на ставку!");
 
-    // Запуск игры
-    loadCloudProfile();
+      p.seeds -= bet;
+      thimbleBet = bet;
+      save();
 
+      isThimbleShuffling = true;
+      thimbleWinningIndex = Math.floor(Math.random() * 3);
+
+      const statusEl = document.getElementById('thimbleStatus');
+      statusEl.innerText = "Барыга крутит... Следи!";
+      statusEl.style.color = "#825e1a";
+
+      for (let i = 0; i < 3; i++) {
+        const cup = document.getElementById(`cup${i}`);
+        cup.innerText = '🪙';
+        cup.style.transform = 'translateY(0px)';
+      }
+
+      let flips = 0;
+      const shuffleInterval = setInterval(() => {
+        const c0 = document.getElementById('cup0');
+        const c1 = document.getElementById('cup1');
+        const c2 = document.getElementById('cup2');
+        const offset = (flips % 2 === 0) ? 8 : -8;
+        c0.style.transform = `translateX(${offset}px)`;
+        c1.style.transform = `translateX(${-offset}px)`;
+        c2.style.transform = `translateX(${offset}px)`;
+
+        flips++;
+        if (flips > 6) {
+          clearInterval(shuffleInterval);
+          c0.style.transform = 'translate(0, 0)';
+          c1.style.transform = 'translate(0, 0)';
+          c2.style.transform = 'translate(0, 0)';
+          isThimbleShuffling = false;
+          statusEl.innerText = "Где куш? Тыкай!";
+          statusEl.style.color = "#2e7d32";
+        }
+      }, 150);
+    }
+
+    function chooseThimble(chosenIndex) {
+      if (isThimbleShuffling) return;
+      if (thimbleBet <= 0) return alert("Сначала сделай ставку!");
+
+      const statusEl = document.getElementById('thimbleStatus');
+
+      for (let i = 0; i < 3; i++) {
+        const cup = document.getElementById(`cup${i}`);
+        cup.style.transform = 'translateY(-15px)';
+        cup.innerText = (i === thimbleWinningIndex) ? '🌻' : '💨';
+      }
+
+      if (chosenIndex === thimbleWinningIndex) {
+        const winAmount = thimbleBet * 2;
+        p.seeds += winAmount;
+        save();
+        tg?.HapticFeedback?.notificationOccurred('success');
+        statusEl.innerText = `🎉 Фартануло! +${winAmount} 🌻!`;
+        statusEl.style.color = "#2e7d32";
+      } else {
+        tg?.HapticFeedback?.notificationOccurred('error');
+        statusEl.innerText = `💨 Мимо! Минус ${thimbleBet} 🌻.`;
+        statusEl.style.color = "#c62828";
+      }
+      thimbleBet = 0;
+    }
+
+    // ДОНАТ STARS
     async function buyStars(packageType) {
       if (!tg) return alert("Оплата доступна только внутри Telegram!");
-
       try {
         const res = await fetch(`${RENDER_BACKEND_URL}/create-invoice`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tg_id: userTgId,
-            package: packageType
-          })
+          body: JSON.stringify({ tg_id: userTgId, package: packageType })
         });
-
         const data = await res.json();
         if (data.ok && data.invoice_link) {
-          // Открываем нативное всплывающее окно Telegram Stars
           tg.openInvoice(data.invoice_link, (status) => {
             if (status === 'paid') {
-              playSound('coin');
               tg?.HapticFeedback?.notificationOccurred('success');
-              alert("Донат зачислен! Обновляем карманы...");
-              setTimeout(loadCloudProfile, 1500); // перезагружаем профиль из Supabase
-            } else if (status === 'cancelled') {
-              console.log("Оплата отменена игроком");
-            } else {
-              alert("Сбой при оплате: " + status);
+              alert("Донат зачислен!");
+              setTimeout(loadCloudProfile, 1500);
             }
           });
         } else {
-          alert("Не удалось создать счет: " + (data.error || "ошибка сервера"));
+          alert("Ошибка создания счета: " + (data.error || "сбой сервера"));
         }
       } catch (err) {
-        alert("Ошибка связи с сервером: " + err.message);
-      }
-    }
-// Загрузка топ-10 пацанов из базы
-    async function loadLeaderboard() {
-      const listEl = document.getElementById('leaderboardList');
-      if (!listEl) return;
-
-      if (!sbClient) {
-        listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Рейтинг доступен только с подключением к облаку</div>';
-        return;
-      }
-
-      listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Подтягиваем авторитетов...</div>';
-
-      try {
-        const { data, error } = await sbClient
-          .from('players')
-          .select('name, level, seeds')
-          .order('level', { ascending: false })
-          .limit(10);
-
-        if (error) {
-          console.error("Leaderboard error:", error);
-          listEl.innerHTML = `<div style="text-align:center; color:#e53935; padding: 10px;">Ошибка загрузки: ${error.message}</div>`;
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          listEl.innerHTML = '<div style="text-align:center; color:#888; padding: 20px;">Район пуст... Будь первым!</div>';
-          return;
-        }
-
-        let html = '';
-        const medals = ['🥇', '🥈', '🥉'];
-
-        data.forEach((player, idx) => {
-          const medal = medals[idx] || `#${idx + 1}`;
-          const pName = escapeHtml(player.name || 'Пацанчик');
-          const pLvl = player.level || 1;
-          const pSeeds = player.seeds || 0;
-
-          html += `
-            <div class="list-item" style="border-left: 3px solid ${idx < 3 ? '#ffd600' : '#555'}; margin-bottom: 8px;">
-              <div>
-                <b style="font-size: 13px;">${medal} ${pName}</b>
-                <div style="font-size: 10px; color: #888;">Районный авторитет</div>
-              </div>
-              <div style="text-align: right;">
-                <b style="color: #ffb74d; font-size: 13px;">${pLvl} ур.</b>
-                <div style="font-size: 11px; color: #aaa;">${pSeeds} 🌻</div>
-              </div>
-            </div>
-          `;
-        });
-
-        listEl.innerHTML = html;
-      } catch (err) {
-        console.error("Critical leaderboard err:", err);
-        listEl.innerHTML = `<div style="text-align:center; color:#e53935; padding: 10px;">Сбой связи: ${err.message || err}</div>`;
+        alert("Ошибка связи: " + err.message);
       }
     }
 
-    // Санитизация имен игроков против XSS
+    // ЛИДЕРБОРД
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (m) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       })[m]);
     }
 
-    // PvP: Наезд на реального пацана из базы
+    async function loadLeaderboard() {
+      const listEl = document.getElementById('leaderboardList');
+      if (!listEl || !sbClient) return;
+
+      listEl.innerHTML = '<div style="text-align:center; padding: 10px;">Подтягиваем авторитетов...</div>';
+      try {
+        const { data, error } = await sbClient.from('players').select('name, level, seeds').order('level', { ascending: false }).limit(10);
+        if (error || !data) return;
+
+        let html = '';
+        const medals = ['🥇', '🥈', '🥉'];
+        data.forEach((pl, idx) => {
+          html += `
+            <div class="list-item" style="border-left: 3px solid ${idx < 3 ? '#b78103' : '#6c5438'};">
+              <div>
+                <b>${medals[idx] || `#${idx + 1}`} ${escapeHtml(pl.name || 'Пацанчик')}</b>
+                <div style="font-size: 10px; color: #6d5438;">Районный авторитет</div>
+              </div>
+              <div style="text-align: right;">
+                <b>${pl.level || 1} ур.</b>
+                <div style="font-size: 10px;">${pl.seeds || 0} 🌻</div>
+              </div>
+            </div>
+          `;
+        });
+        listEl.innerHTML = html;
+      } catch (err) {
+        console.error("Leaderboard err:", err);
+      }
+    }
+
+    // PVP НАЕЗД
     async function pvpFindOpponent() {
-      if (p.energy < 10) return alert("Мало энергии для наезда! (Нужно 10 ⚡)");
-      if (!sbClient) return alert("PvP доступно только в сети!");
+      if (p.energy < 10) return alert("Нужно 10 ⚡ энергии!");
+      if (!sbClient) return alert("PvP только в сети!");
 
       const resBox = document.getElementById('pvpResultBox');
       resBox.style.display = 'block';
@@ -1070,94 +1466,53 @@
       save();
 
       try {
-        // Ищем случайных игроков, исключая себя
-        const { data, error } = await sbClient
-          .from('players')
-          .select('tg_id, name, str, agi, vit, seeds, level')
-          .neq('tg_id', userTgId)
-          .limit(15);
-
-        if (error || !data || data.length === 0) {
-          resBox.innerHTML = 'На районе пока никого нет, все по хатам сидят. Попробуй позже!';
+        const { data } = await sbClient.from('players').select('tg_id, name, str, agi, vit, seeds, level').neq('tg_id', userTgId).limit(15);
+        if (!data || data.length === 0) {
+          resBox.innerHTML = 'Все по хатам сидят. Попробуй позже!';
           return;
         }
 
-        // Выбираем случайного противника из выборки
         const opp = data[Math.floor(Math.random() * data.length)];
-        const oppStr = opp.str || 5;
-        const oppAgi = opp.agi || 5;
-        const oppVit = opp.vit || 10;
-        const oppHp = oppVit * 10;
-
         resBox.innerHTML = `⚔️ Наезд на пацана: <b>${escapeHtml(opp.name)}</b> (${opp.level} ур.)!<br>Махач начался...`;
 
         setTimeout(() => {
-          // Быстрый расчет боя по статам
-          const myEffStr = getEffectiveStr();
-          const myEffAgi = getEffectiveAgi();
-
-          // Мощь игрока и противника
-          const myPower = (myEffStr * 1.5) + (myEffAgi * 1.2) + (Math.random() * 10);
-          const oppPower = (oppStr * 1.5) + (oppAgi * 1.2) + (Math.random() * 10);
+          const myPower = (getEffectiveStr() * 1.5) + (getEffectiveAgi() * 1.2) + (Math.random() * 10);
+          const oppPower = ((opp.str || 5) * 1.5) + ((opp.agi || 5) * 1.2) + (Math.random() * 10);
 
           if (myPower >= oppPower) {
-            // Победа!
-            const stolenSeeds = Math.min(Math.floor((opp.seeds || 10) * 0.2), 50);
-            const reward = Math.max(15, stolenSeeds);
+            const reward = Math.max(15, Math.min(Math.floor((opp.seeds || 10) * 0.2), 50));
             p.seeds += reward;
             p.level += 1;
-            playSound('coin');
             tg?.HapticFeedback?.notificationOccurred('success');
-
-            resBox.innerHTML = `
-              <b style="color: #4caf50;">🏆 ПОБЕДА!</b><br>
-              Ты вломил пацану <b>${escapeHtml(opp.name)}</b> по первое число!<br>
-              Отжато: <b>+${reward} 🌻</b> и <b>+1 к Чину</b>!
-            `;
+            resBox.innerHTML = `<b>🏆 ПОБЕДА!</b><br>Ты вломил ${escapeHtml(opp.name)}!<br>+${reward} 🌻 и +1 к Чину!`;
             save();
             loadLeaderboard();
           } else {
-            // Поражение
-            const lostSeeds = Math.floor(p.seeds * 0.1);
-            p.seeds = Math.max(0, p.seeds - lostSeeds);
+            const lost = Math.floor(p.seeds * 0.1);
+            p.seeds = Math.max(0, p.seeds - lost);
             p.hp = Math.max(10, Math.floor(p.hp * 0.5));
-            playSound('hit');
             triggerShake();
             tg?.HapticFeedback?.notificationOccurred('error');
-
-            resBox.innerHTML = `
-              <b style="color: #e53935;">💀 ТЕБЯ ПОЛОЖИЛИ!</b><br>
-              Пацан <b>${escapeHtml(opp.name)}</b> оказался жестче, чем ты думал.<br>
-              Ты потерял <b>-${lostSeeds} 🌻</b> и половину здоровья!
-            `;
+            resBox.innerHTML = `<b>💀 ТЕБЯ ПОЛОЖИЛИ!</b><br>${escapeHtml(opp.name)} оказался жестче.<br>-${lost} 🌻 и пол-ХП!`;
             save();
           }
-        }, 1200);
-
+        }, 1000);
       } catch (e) {
-        console.error("PvP error:", e);
-        resBox.innerHTML = 'Стрела сорвалась: ошибка связи с сервером.';
+        resBox.innerHTML = 'Сбой связи с сервером.';
       }
     }
 
-let currentGang = null;
-
+    // БРИГАДЫ
+    let currentGang = null;
     async function loadGangData() {
       if (!sbClient) return;
-
       const activeBox = document.getElementById('gangActiveBox');
       const createBox = document.getElementById('gangCreateBox');
       const gangsListEl = document.getElementById('gangsLeaderboard');
 
       try {
-        // 1. Проверяем, состоит ли игрок в банде
         if (p.gang_id) {
-          const { data: gang } = await sbClient
-            .from('gangs')
-            .select('*')
-            .eq('id', p.gang_id)
-            .maybeSingle();
-
+          const { data: gang } = await sbClient.from('gangs').select('*').eq('id', p.gang_id).maybeSingle();
           if (gang) {
             currentGang = gang;
             document.getElementById('myGangName').innerText = gang.name;
@@ -1175,48 +1530,30 @@ let currentGang = null;
           createBox.style.display = 'block';
         }
 
-        // 2. Загружаем рейтинг банд
-        const { data: topGangs, error } = await sbClient
-          .from('gangs')
-          .select('*')
-          .order('bank', { ascending: false })
-          .limit(5);
-
-        if (error) throw error;
-
-        if (!topGangs || topGangs.length === 0) {
-          gangsListEl.innerHTML = '<div style="text-align:center; color:#777; font-size:11px;">Бандитских группировок ещё нет. Создай первую!</div>';
-        } else {
+        const { data: topGangs } = await sbClient.from('gangs').select('*').order('bank', { ascending: false }).limit(5);
+        if (topGangs && topGangs.length > 0) {
           let gHtml = '';
           topGangs.forEach((g, i) => {
-            const isMy = p.gang_id === g.id;
             gHtml += `
-              <div class="list-item" style="border-left: 3px solid ${isMy ? '#4caf50' : '#888'}; margin-bottom: 6px;">
-                <div>
-                  <b>#${i + 1} ${escapeHtml(g.name)}</b>
-                  <div style="font-size: 10px; color: #888;">Бойцов: ${g.members_count}</div>
-                </div>
+              <div class="list-item">
+                <div><b>#${i + 1} ${escapeHtml(g.name)}</b> (${g.members_count} чел.)</div>
                 <div style="text-align: right;">
-                  <b style="color: #ffd600; font-size: 12px;">${g.bank} 🌻</b>
-                  ${!p.gang_id ? `<button class="btn" style="padding: 3px 8px; font-size: 10px; margin-top: 4px;" onclick="joinGang(${g.id})">Вступить</button>` : ''}
+                  <b>${g.bank} 🌻</b>
+                  ${!p.gang_id ? `<button class="flock-btn" style="padding: 2px 6px; font-size: 9px;" onclick="joinGang(${g.id})">Вступить</button>` : ''}
                 </div>
               </div>
             `;
           });
           gangsListEl.innerHTML = gHtml;
         }
-
       } catch (err) {
         console.error("Gang load error:", err);
       }
     }
 
     async function createGang() {
-      const input = document.getElementById('newGangName');
-      const name = input.value.trim();
-
-      if (!name) return alert("Введи погоняло банды!");
-      if (name.length < 3) return alert("Слишком короткое название!");
+      const name = document.getElementById('newGangName').value.trim();
+      if (!name || name.length < 3) return alert("Введи нормальное название!");
       if (p.seeds < 100 || p.phones < 1) return alert("Нужно 100 семок и 1 мобила!");
 
       p.seeds -= 100;
@@ -1224,27 +1561,11 @@ let currentGang = null;
       save();
 
       try {
-        const { data, error } = await sbClient
-          .from('gangs')
-          .insert([{
-            name: name,
-            leader_id: userTgId,
-            bank: 100,
-            members_count: 1
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          alert("Такая бригада уже существует или произошел сбой!");
-          return;
-        }
-
+        const { data, error } = await sbClient.from('gangs').insert([{ name, leader_id: userTgId, bank: 100, members_count: 1 }]).select().single();
+        if (error) return alert("Банда с таким именем уже есть!");
         p.gang_id = data.id;
         await sbClient.from('players').update({ gang_id: data.id }).eq('tg_id', userTgId);
-        playSound('coin');
-        alert(`Бригада «${name}» сформирована! Держите район!`);
-        input.value = '';
+        alert(`Бригада «${name}» создана!`);
         loadGangData();
       } catch (err) {
         alert("Ошибка создания: " + err.message);
@@ -1252,20 +1573,13 @@ let currentGang = null;
     }
 
     async function joinGang(gangId) {
-      if (p.gang_id) return alert("Ты уже состоишь в банде!");
-
+      if (p.gang_id) return alert("Ты уже в банде!");
       try {
         p.gang_id = gangId;
         await sbClient.from('players').update({ gang_id: gangId }).eq('tg_id', userTgId);
-
-        // Увеличиваем счетчик бойцов
         const { data: gang } = await sbClient.from('gangs').select('members_count').eq('id', gangId).single();
-        if (gang) {
-          await sbClient.from('gangs').update({ members_count: (gang.members_count || 1) + 1 }).eq('id', gangId);
-        }
-
-        playSound('coin');
-        alert("Ты влился в ряды группировки! Не подводи пацанов.");
+        if (gang) await sbClient.from('gangs').update({ members_count: (gang.members_count || 1) + 1 }).eq('id', gangId);
+        alert("Ты в банде!");
         loadGangData();
       } catch (err) {
         alert("Ошибка вступления: " + err.message);
@@ -1274,437 +1588,35 @@ let currentGang = null;
 
     async function depositToGangBank() {
       if (!currentGang) return;
-      if (p.seeds < 50) return alert("Не хватает 50 семок для общака!");
-
+      if (p.seeds < 50) return alert("Не хватает 50 семок!");
       p.seeds -= 50;
       save();
-
       try {
         const newBank = (currentGang.bank || 0) + 50;
         await sbClient.from('gangs').update({ bank: newBank }).eq('id', currentGang.id);
         currentGang.bank = newBank;
         document.getElementById('myGangBank').innerText = newBank;
-        playSound('coin');
         tg?.HapticFeedback?.notificationOccurred('success');
-        alert("В общак упало +50 🌻! Авторитет банды растет.");
+        alert("В общак упало +50 🌻!");
         loadGangData();
       } catch (err) {
         console.error("Deposit error:", err);
       }
     }
 
-let raidBossData = null;
-    let raidHitCooldown = false;
+    // Регенерация и циклы
+    setInterval(() => {
+      if (p.energy < p.maxEnergy) { p.energy++; save(); }
+    }, 3000);
+
+    setInterval(() => {
+      if (p.friends > 0) { p.seeds += p.friends * 2; save(); }
+    }, 10000);
 
-    async function loadRaidBoss() {
-      if (!sbClient) return;
-
-      try {
-        const { data, error } = await sbClient
-          .from('world_boss')
-          .select('*')
-          .eq('id', 1)
-          .single();
-
-        if (error || !data) return;
-        raidBossData = data;
-
-        const hpPct = Math.max(0, (data.cur_hp / data.max_hp) * 100);
-        document.getElementById('raidBossName').innerText = data.name;
-        document.getElementById('raidBossHpText').innerText = `${Math.max(0, data.cur_hp)} / ${data.max_hp}`;
-        document.getElementById('raidBossHpBar').style.width = hpPct + '%';
-
-        const badge = document.getElementById('raidStatusBadge');
-        const btn = document.getElementById('btnRaidHit');
-
-        if (data.cur_hp <= 0 || data.status === 'defeated') {
-          badge.innerText = 'ОБЛАВА ОТБИТА';
-          badge.style.background = '#4caf50';
-          btn.disabled = true;
-          btn.innerText = '🏆 Босс повержен всей братвой!';
-          btn.style.background = '#333';
-        } else {
-          badge.innerText = 'АКТИВЕН';
-          badge.style.background = '#d32f2f';
-          btn.disabled = false;
-          btn.innerText = '💥 Всей толпой на босса (-5 ⚡)';
-          btn.style.background = '';
-        }
-      } catch (err) {
-        console.error("Ошибка загрузки рейд-босса:", err);
-      }
-    }
-
-    async function hitRaidBoss(e) {
-      if (!raidBossData) return;
-      if (raidBossData.cur_hp <= 0) return alert("Босс уже повержен!");
-      if (p.energy < 5) return alert("Не хватает энергии! Нужно 5 ⚡");
-      if (raidHitCooldown) return alert("Переведи дух пару секунд перед новым выпадом!");
-
-      raidHitCooldown = true;
-      setTimeout(() => { raidHitCooldown = false; }, 1500);
-
-      p.energy -= 5;
-      save();
-
-      tg?.HapticFeedback?.impactOccurred('heavy');
-      triggerShake();
-
-      // Урон зависит от силы персонажа
-      const effStr = getEffectiveStr();
-      let dmg = Math.max(10, effStr * 3 + Math.floor(Math.random() * 10));
-
-      playSound('crit');
-      spawnDmgText(`-${dmg} 💥`, true, e);
-
-      // Оптимистично уменьшаем на экране сразу
-      raidBossData.cur_hp = Math.max(0, raidBossData.cur_hp - dmg);
-      const hpPct = Math.max(0, (raidBossData.cur_hp / raidBossData.max_hp) * 100);
-      document.getElementById('raidBossHpText').innerText = `${raidBossData.cur_hp} / ${raidBossData.max_hp}`;
-      document.getElementById('raidBossHpBar').style.width = hpPct + '%';
-
-      // Награда за каждый удар
-      const seedsReward = Math.floor(dmg / 2);
-      p.seeds += seedsReward;
-      save();
-
-      try {
-        // Списываем урон в базе
-        const newHp = raidBossData.cur_hp;
-        const isDefeated = newHp <= 0;
-
-        await sbClient.from('world_boss').update({
-          cur_hp: newHp,
-          status: isDefeated ? 'defeated' : 'alive',
-          updated_at: new Date().toISOString()
-        }).eq('id', 1);
-
-        if (isDefeated) {
-          playSound('coin');
-          p.seeds += 500; // Бонус за добивание
-          alert("🎉 НЕВЕРОЯТНО! Ты нанес финальный удар и спас район! Бонус +500 семок в карман!");
-          save();
-          loadRaidBoss();
-        }
-      } catch (err) {
-        console.error("Ошибка обновления рейд-босса:", err);
-      }
-    }
-
-// Расчет офлайн дохода от точек
-    function calcAfkIncome() {
-      const now = Date.now();
-      const diffMinutes = Math.floor((now - p.lastClaimTime) / 60000);
-
-      // Доходность: киоск = 1 семка/мин, мойка = 3 семки/мин, рынок = 8 семок/мин
-      const ratePerMinute = (p.biz.kiosk * 1) + (p.biz.carwash * 3) + (p.biz.market * 8);
-
-      // Максимальное накопление — за 8 часов (480 минут)
-      const cappedMinutes = Math.min(diffMinutes, 480);
-      const accumulated = cappedMinutes * ratePerMinute;
-
-      const afkTextEl = document.getElementById('afkSeedsText');
-      if (afkTextEl) afkTextEl.innerText = accumulated;
-
-      return accumulated;
-    }
-
-    // Сбор кассы
-    async function claimAfkIncome() {
-      const amount = calcAfkIncome();
-      if (amount <= 0) return alert("Пока касса пустая, подожди немного!");
-
-      p.seeds += amount;
-      p.lastClaimTime = Date.now();
-      save();
-
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-      alert(`Снял с района +${amount} 🌻!`);
-
-      calcAfkIncome();
-
-      if (sbClient) {
-        await sbClient.from('players').update({
-          seeds: p.seeds,
-          last_claim_time: new Date().toISOString()
-        }).eq('tg_id', userTgId);
-      }
-    }
-
-    // Проверка статуса ежедневного бонуса
-    function checkDailyStreakUI() {
-      const today = new Date().toISOString().slice(0, 10);
-      const btn = document.getElementById('btnDailyBonus');
-      const streakText = document.getElementById('streakCountText');
-      if (!btn || !streakText) return;
-
-      streakText.innerText = (p.streak || 0) + 1;
-
-      if (p.lastStreakDate === today) {
-        btn.disabled = true;
-        btn.innerText = 'Получено ✅';
-        btn.style.background = '#444';
-      } else {
-        btn.disabled = false;
-        btn.innerText = 'Забрать';
-        btn.style.background = '';
-      }
-    }
-
-    // Забрать дневной грев
-    async function claimDailyReward() {
-      const today = new Date().toISOString().slice(0, 10);
-      if (p.lastStreakDate === today) return alert("Сегодня ты уже забирал подгон!");
-
-      // Проверка непрерывности серии
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      if (p.lastStreakDate === yesterday) {
-        p.streak = (p.streak || 0) + 1;
-      } else {
-        p.streak = 1; // Сброс серии, если пропустил день
-      }
-
-      // Награда: растет с каждым днем (день 7 — мобила!)
-      const dayBonus = p.streak % 7;
-      let rewardSeeds = 50 * (dayBonus === 0 ? 7 : dayBonus);
-      let rewardPhones = dayBonus === 0 ? 1 : 0;
-
-      p.seeds += rewardSeeds;
-      p.phones += rewardPhones;
-      p.lastStreakDate = today;
-      save();
-
-      playSound('coin');
-      tg?.HapticFeedback?.notificationOccurred('success');
-
-      let msg = `📅 Подгон за ${p.streak}-й день получен!\n+${rewardSeeds} 🌻`;
-      if (rewardPhones > 0) msg += ` и +${rewardPhones} 📱!`;
-      alert(msg);
-
-      checkDailyStreakUI();
-
-      if (sbClient) {
-        await sbClient.from('players').update({
-          seeds: p.seeds,
-          phones: p.phones,
-          daily_streak: p.streak,
-          last_streak_date: today
-        }).eq('tg_id', userTgId);
-      }
-    }
-    function drawPatsanAvatar() {
-      const canvas = document.getElementById('heroCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const cx = canvas.width / 2; // середина по горизонтали (160)
-      const cy = 20; // смещение сверху
-
-      // 1. Тень на асфальте под пацаном
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 150, 50, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 2. Кроссовки (белые педали)
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.ellipse(cx - 25, cy + 142, 14, 7, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 25, cy + 142, 14, 7, 0.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 3. Треники с лампасами (сидя на кортах)
-      const hasLeather = (p.gear && p.gear.includes('Кожанка'));
-      ctx.fillStyle = hasLeather ? "#1c1c1c" : "#102038";
-      ctx.beginPath();
-      ctx.roundRect(cx - 38, cy + 95, 24, 48, [8, 8, 4, 4]);
-      ctx.roundRect(cx + 14, cy + 95, 24, 48, [8, 8, 4, 4]);
-      ctx.fill();
-
-      // Белые лампасы Abibas
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(cx - 36, cy + 98); ctx.lineTo(cx - 36, cy + 140);
-      ctx.moveTo(cx + 34, cy + 98); ctx.lineTo(cx + 34, cy + 140);
-      ctx.stroke();
-
-      // 4. Верх (олимпийка или кожанка)
-      if (hasLeather) {
-        ctx.fillStyle = "#211c18";
-        ctx.beginPath();
-        ctx.roundRect(cx - 32, cy + 48, 64, 52, 10);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = "#0d47a1"; // синяя спортивка
-        ctx.beginPath();
-        ctx.roundRect(cx - 30, cy + 48, 60, 52, 8);
-        ctx.fill();
-        // Белая полоска поперек олимпийки
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(cx - 30, cy + 68, 60, 7);
-      }
-
-      // 5. Руки на коленях
-      ctx.fillStyle = "#e0a97d";
-      ctx.beginPath();
-      ctx.arc(cx - 28, cy + 102, 8, 0, Math.PI * 2);
-      ctx.arc(cx + 28, cy + 102, 8, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Бита или кастет в руке
-      if (p.gear && p.gear.includes('Бита')) {
-        ctx.fillStyle = "#d7ccc8";
-        ctx.save();
-        ctx.translate(cx + 32, cy + 95);
-        ctx.rotate(-0.4);
-        ctx.fillRect(0, -42, 8, 45);
-        ctx.restore();
-      } else if (p.gear && p.gear.includes('Кастет')) {
-        ctx.fillStyle = "#b0bec5";
-        ctx.beginPath();
-        ctx.arc(cx + 30, cy + 102, 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 6. Шея и голова
-      ctx.fillStyle = "#e0a97d";
-      ctx.fillRect(cx - 8, cy + 38, 16, 12);
-
-      // Золотая цепь на шее
-      if (p.gear && (p.gear.includes('Цепь') || p.level >= 5)) {
-        ctx.strokeStyle = "#ffd700";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy + 44, 10, 0.1, Math.PI - 0.1);
-        ctx.stroke();
-      }
-
-      // Голова
-      ctx.fillStyle = "#e8b288";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 26, 18, 22, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Уши
-      ctx.beginPath();
-      ctx.arc(cx - 18, cy + 27, 4, 0, Math.PI * 2);
-      ctx.arc(cx + 18, cy + 27, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 7. Лицо (глаза и брови)
-      ctx.fillStyle = "#111";
-      ctx.fillRect(cx - 10, cy + 22, 4, 3);
-      ctx.fillRect(cx + 6, cy + 22, 4, 3);
-
-      ctx.strokeStyle = "#222";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx - 12, cy + 19); ctx.lineTo(cx - 5, cy + 21);
-      ctx.moveTo(cx + 12, cy + 19); ctx.lineTo(cx + 5, cy + 21);
-      ctx.stroke();
-
-      // 8. Кепка-восьмиклинка
-      ctx.fillStyle = "#263238";
-      ctx.beginPath();
-      ctx.ellipse(cx + 3, cy + 14, 20, 6, 0.05, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 8, 21, 12, -0.05, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    let thimbleBet = 0;
-    let thimbleWinningIndex = -1;
-    let isThimbleShuffling = false;
-
-    function playThimbles(bet) {
-      if (isThimbleShuffling) return;
-      if (p.seeds < bet) return alert("Не хватает семок на ставку!");
-
-      p.seeds -= bet;
-      thimbleBet = bet;
-      save();
-
-      isThimbleShuffling = true;
-      thimbleWinningIndex = Math.floor(Math.random() * 3);
-
-      const statusEl = document.getElementById('thimbleStatus');
-      statusEl.innerText = "Барыга крутит стаканы... Следи!";
-      statusEl.style.color = "#ffb74d";
-
-      // Сбрасываем вид напёрстков
-      for (let i = 0; i < 3; i++) {
-        const cup = document.getElementById(`cup${i}`);
-        cup.innerText = '🪙';
-        cup.style.transform = 'translateY(0px)';
-      }
-
-      // Анимация перемешивания
-      let flips = 0;
-      const shuffleInterval = setInterval(() => {
-        const c0 = document.getElementById('cup0');
-        const c1 = document.getElementById('cup1');
-        const c2 = document.getElementById('cup2');
-
-        const offset = (flips % 2 === 0) ? 10 : -10;
-        c0.style.transform = `translateX(${offset}px)`;
-        c1.style.transform = `translateX(${-offset}px)`;
-        c2.style.transform = `translateX(${offset}px)`;
-
-        flips++;
-        if (flips > 6) {
-          clearInterval(shuffleInterval);
-          c0.style.transform = 'translate(0, 0)';
-          c1.style.transform = 'translate(0, 0)';
-          c2.style.transform = 'translate(0, 0)';
-          isThimbleShuffling = false;
-          statusEl.innerText = "Где куш? Тыкай в напёрсток!";
-          statusEl.style.color = "#ffd600";
-        }
-      }, 150);
-    }
-
-    function chooseThimble(chosenIndex) {
-      if (isThimbleShuffling) return;
-      if (thimbleBet <= 0) return alert("Сначала нажми на ставку!");
-
-      const statusEl = document.getElementById('thimbleStatus');
-
-      // Поднимаем стаканы
-      for (let i = 0; i < 3; i++) {
-        const cup = document.getElementById(`cup${i}`);
-        cup.style.transform = 'translateY(-20px)';
-        if (i === thimbleWinningIndex) {
-          cup.innerText = '🌻'; // тут была семка
-        } else {
-          cup.innerText = '💨'; // пусто
-        }
-      }
-
-      if (chosenIndex === thimbleWinningIndex) {
-        // Выигрыш х2
-        const winAmount = thimbleBet * 2;
-        p.seeds += winAmount;
-        save();
-        playSound('coin');
-        tg?.HapticFeedback?.notificationOccurred('success');
-        statusEl.innerText = `🎉 Фартануло! Ты поднял +${winAmount} 🌻!`;
-        statusEl.style.color = "#4caf50";
-      } else {
-        // Проигрыш
-        playSound('hit');
-        tg?.HapticFeedback?.notificationOccurred('error');
-        statusEl.innerText = `💨 Мимо! Барыга забрал твои ${thimbleBet} 🌻.`;
-        statusEl.style.color = "#e53935";
-      }
-
-      thimbleBet = 0; // Сброс ставки после раунда
-    }
     setInterval(calcAfkIncome, 10000);
+
+    // Старт
+    loadCloudProfile();
   </script>
 </body>
 </html>
