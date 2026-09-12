@@ -234,6 +234,30 @@
   <!-- ЛАРЕК -->
   <div class="screen" id="screenShop">
     <h3 style="margin: 0 0 8px;">Ларёк «У Ашота»</h3>
+    <!-- УЛИЧНЫЕ НАПЁРСТКИ -->
+    <div style="width: 100%; max-width: 320px; background: #161616; border: 2px dashed #ffb74d; border-radius: 10px; padding: 12px; margin-bottom: 16px; text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <b style="color: #ffb74d; font-size: 13px;">🎲 Напёрстки у Барыги</b>
+        <span style="font-size: 10px; background: #333; padding: 2px 6px; border-radius: 4px; color: #aaa;">Куш x2</span>
+      </div>
+      <p style="font-size: 11px; color: #888; margin: 0 0 12px;">Кручу-верчу, запутать хочу! Под каким стаканом семка?</p>
+
+      <!-- ТРИ НАПЁРСТКА -->
+      <div style="display: flex; justify-content: space-around; align-items: flex-end; height: 75px; margin-bottom: 12px; position: relative;">
+        <div id="cup0" onclick="chooseThimble(0)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
+        <div id="cup1" onclick="chooseThimble(1)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
+        <div id="cup2" onclick="chooseThimble(2)" style="font-size: 40px; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none;">🪙</div>
+      </div>
+
+      <div id="thimbleStatus" style="font-size: 11px; color: #ffd600; min-height: 16px; margin-bottom: 8px;">Сделай ставку и выбери напёрсток</div>
+
+      <!-- ВЫБОР СТАВКИ -->
+      <div style="display: flex; gap: 6px; justify-content: center;">
+        <button class="btn" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(20)">Ставка 20 🌻</button>
+        <button class="btn" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(50)">Ставка 50 🌻</button>
+        <button class="btn btn-gold" style="padding: 5px 10px; font-size: 11px;" onclick="playThimbles(100)">Ставка 100 🌻</button>
+      </div>
+    </div>
     <div class="list-item">
       <div><b>Кепка-восьмиклинка</b><br><small>+3 к Ловкости</small></div>
       <button class="btn" id="item_cap" onclick="buyGear('cap', 50, 0, 3, 0, 'Кепка-восьмиклинка')">50 🌻</button>
@@ -1592,6 +1616,93 @@ let raidBossData = null;
       ctx.beginPath();
       ctx.ellipse(cx, cy + 8, 21, 12, -0.05, 0, Math.PI * 2);
       ctx.fill();
+    }
+    let thimbleBet = 0;
+    let thimbleWinningIndex = -1;
+    let isThimbleShuffling = false;
+
+    function playThimbles(bet) {
+      if (isThimbleShuffling) return;
+      if (p.seeds < bet) return alert("Не хватает семок на ставку!");
+
+      p.seeds -= bet;
+      thimbleBet = bet;
+      save();
+
+      isThimbleShuffling = true;
+      thimbleWinningIndex = Math.floor(Math.random() * 3);
+
+      const statusEl = document.getElementById('thimbleStatus');
+      statusEl.innerText = "Барыга крутит стаканы... Следи!";
+      statusEl.style.color = "#ffb74d";
+
+      // Сбрасываем вид напёрстков
+      for (let i = 0; i < 3; i++) {
+        const cup = document.getElementById(`cup${i}`);
+        cup.innerText = '🪙';
+        cup.style.transform = 'translateY(0px)';
+      }
+
+      // Анимация перемешивания
+      let flips = 0;
+      const shuffleInterval = setInterval(() => {
+        const c0 = document.getElementById('cup0');
+        const c1 = document.getElementById('cup1');
+        const c2 = document.getElementById('cup2');
+
+        const offset = (flips % 2 === 0) ? 10 : -10;
+        c0.style.transform = `translateX(${offset}px)`;
+        c1.style.transform = `translateX(${-offset}px)`;
+        c2.style.transform = `translateX(${offset}px)`;
+
+        flips++;
+        if (flips > 6) {
+          clearInterval(shuffleInterval);
+          c0.style.transform = 'translate(0, 0)';
+          c1.style.transform = 'translate(0, 0)';
+          c2.style.transform = 'translate(0, 0)';
+          isThimbleShuffling = false;
+          statusEl.innerText = "Где куш? Тыкай в напёрсток!";
+          statusEl.style.color = "#ffd600";
+        }
+      }, 150);
+    }
+
+    function chooseThimble(chosenIndex) {
+      if (isThimbleShuffling) return;
+      if (thimbleBet <= 0) return alert("Сначала нажми на ставку!");
+
+      const statusEl = document.getElementById('thimbleStatus');
+
+      // Поднимаем стаканы
+      for (let i = 0; i < 3; i++) {
+        const cup = document.getElementById(`cup${i}`);
+        cup.style.transform = 'translateY(-20px)';
+        if (i === thimbleWinningIndex) {
+          cup.innerText = '🌻'; // тут была семка
+        } else {
+          cup.innerText = '💨'; // пусто
+        }
+      }
+
+      if (chosenIndex === thimbleWinningIndex) {
+        // Выигрыш х2
+        const winAmount = thimbleBet * 2;
+        p.seeds += winAmount;
+        save();
+        playSound('coin');
+        tg?.HapticFeedback?.notificationOccurred('success');
+        statusEl.innerText = `🎉 Фартануло! Ты поднял +${winAmount} 🌻!`;
+        statusEl.style.color = "#4caf50";
+      } else {
+        // Проигрыш
+        playSound('hit');
+        tg?.HapticFeedback?.notificationOccurred('error');
+        statusEl.innerText = `💨 Мимо! Барыга забрал твои ${thimbleBet} 🌻.`;
+        statusEl.style.color = "#e53935";
+      }
+
+      thimbleBet = 0; // Сброс ставки после раунда
     }
     setInterval(calcAfkIncome, 10000);
   </script>
