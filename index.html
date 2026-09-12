@@ -713,6 +713,7 @@
       }
 
       drawHero();
+      drawPatsanAvatar();
     }
 
     // ТАБЫ (ВКЛАДКИ)
@@ -1467,6 +1468,130 @@ let raidBossData = null;
           last_streak_date: today
         }).eq('tg_id', userTgId);
       }
+    }
+    function drawPatsanAvatar() {
+      const canvas = document.getElementById('heroCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2; // середина по горизонтали (160)
+      const cy = 20; // смещение сверху
+
+      // 1. Тень на асфальте под пацаном
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 150, 50, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Кроссовки (белые педали)
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.ellipse(cx - 25, cy + 142, 14, 7, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + 25, cy + 142, 14, 7, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Треники с лампасами (сидя на кортах)
+      const hasLeather = (p.gear && p.gear.includes('Кожанка'));
+      ctx.fillStyle = hasLeather ? "#1c1c1c" : "#102038";
+      ctx.beginPath();
+      ctx.roundRect(cx - 38, cy + 95, 24, 48, [8, 8, 4, 4]);
+      ctx.roundRect(cx + 14, cy + 95, 24, 48, [8, 8, 4, 4]);
+      ctx.fill();
+
+      // Белые лампасы Abibas
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 36, cy + 98); ctx.lineTo(cx - 36, cy + 140);
+      ctx.moveTo(cx + 34, cy + 98); ctx.lineTo(cx + 34, cy + 140);
+      ctx.stroke();
+
+      // 4. Верх (олимпийка или кожанка)
+      if (hasLeather) {
+        ctx.fillStyle = "#211c18";
+        ctx.beginPath();
+        ctx.roundRect(cx - 32, cy + 48, 64, 52, 10);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#0d47a1"; // синяя спортивка
+        ctx.beginPath();
+        ctx.roundRect(cx - 30, cy + 48, 60, 52, 8);
+        ctx.fill();
+        // Белая полоска поперек олимпийки
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(cx - 30, cy + 68, 60, 7);
+      }
+
+      // 5. Руки на коленях
+      ctx.fillStyle = "#e0a97d";
+      ctx.beginPath();
+      ctx.arc(cx - 28, cy + 102, 8, 0, Math.PI * 2);
+      ctx.arc(cx + 28, cy + 102, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Бита или кастет в руке
+      if (p.gear && p.gear.includes('Бита')) {
+        ctx.fillStyle = "#d7ccc8";
+        ctx.save();
+        ctx.translate(cx + 32, cy + 95);
+        ctx.rotate(-0.4);
+        ctx.fillRect(0, -42, 8, 45);
+        ctx.restore();
+      } else if (p.gear && p.gear.includes('Кастет')) {
+        ctx.fillStyle = "#b0bec5";
+        ctx.beginPath();
+        ctx.arc(cx + 30, cy + 102, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 6. Шея и голова
+      ctx.fillStyle = "#e0a97d";
+      ctx.fillRect(cx - 8, cy + 38, 16, 12);
+
+      // Золотая цепь на шее
+      if (p.gear && (p.gear.includes('Цепь') || p.level >= 5)) {
+        ctx.strokeStyle = "#ffd700";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy + 44, 10, 0.1, Math.PI - 0.1);
+        ctx.stroke();
+      }
+
+      // Голова
+      ctx.fillStyle = "#e8b288";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 26, 18, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Уши
+      ctx.beginPath();
+      ctx.arc(cx - 18, cy + 27, 4, 0, Math.PI * 2);
+      ctx.arc(cx + 18, cy + 27, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 7. Лицо (глаза и брови)
+      ctx.fillStyle = "#111";
+      ctx.fillRect(cx - 10, cy + 22, 4, 3);
+      ctx.fillRect(cx + 6, cy + 22, 4, 3);
+
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, cy + 19); ctx.lineTo(cx - 5, cy + 21);
+      ctx.moveTo(cx + 12, cy + 19); ctx.lineTo(cx + 5, cy + 21);
+      ctx.stroke();
+
+      // 8. Кепка-восьмиклинка
+      ctx.fillStyle = "#263238";
+      ctx.beginPath();
+      ctx.ellipse(cx + 3, cy + 14, 20, 6, 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 8, 21, 12, -0.05, 0, Math.PI * 2);
+      ctx.fill();
     }
     setInterval(calcAfkIncome, 10000);
   </script>
