@@ -256,17 +256,19 @@
     <div class="nav-tab" onclick="tab('screenLoot', this)">Хабар 🎒</div>
     <div class="nav-tab" onclick="tab('screenCrew', this)">Братва 👥</div>
   </div>
-
+  
   <script>
     const SUPABASE_URL = 'https://tdnvnbpyuiwuytpaucih.supabase.co/rest/v1/';
     const SUPABASE_ANON_KEY = 'sb_publishable_gXMjGOLhnY4I9hwGSqM-SA_jIe_rBN9';
     
-    let supabase = null;
+    let sbClient = null;
     try {
-      if (SUPABASE_URL.indexOf('YOUR_PROJECT') === -1) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      if (SUPABASE_URL && SUPABASE_URL.indexOf('YOUR_PROJECT') === -1) {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error("Ошибка инициализации Supabase:", e);
+    }
 
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
@@ -292,7 +294,7 @@
       gear: 'Спортивки'
     };
 
-    // --- СИСТЕМА ОТРИСОВКИ ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
+    // --- ОТРИСОВКА ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
     function loadImage(src) {
       return new Promise((resolve) => {
         const img = new Image();
@@ -308,7 +310,6 @@
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Слой 1: Базовая картинка
       let baseImg = await loadImage('assets/patsan_base.png');
       if (!baseImg) baseImg = await loadImage('assets/preview.jpg');
 
@@ -323,13 +324,11 @@
         ctx.fillText('Положи patsan_base.png в assets', canvas.width / 2, canvas.height / 2);
       }
 
-      // Слой 2: Кепка
       if (p.items.includes('cap')) {
         const capImg = await loadImage('assets/gear_cap.png');
         if (capImg) {
           ctx.drawImage(capImg, 0, 0, canvas.width, canvas.height);
         } else {
-          // Визуальная плашка, если спрайта gear_cap.png еще нет в папке
           ctx.fillStyle = 'rgba(230, 81, 0, 0.85)';
           ctx.fillRect(10, 10, 85, 22);
           ctx.fillStyle = '#fff';
@@ -339,7 +338,6 @@
         }
       }
 
-      // Слой 3: Кастет
       if (p.items.includes('knuckle')) {
         const weaponImg = await loadImage('assets/gear_knuckle.png');
         if (weaponImg) {
@@ -355,46 +353,52 @@
       }
     }
 
-    // --- ОБЛАЧНЫЙ ПРОФИЛЬ ---
+    // --- ОБЛАКО / ЛОКАЛЬНЫЙ РЕЖИМ ---
     async function loadCloudProfile() {
       const statusEl = document.getElementById('cloudStatus');
-      if (!supabase) {
+      if (!sbClient) {
         statusEl.innerText = '💾 Локальный режим (без облака)';
         loadLocal();
         return;
       }
 
       statusEl.innerText = '☁️ Синхронизация с облаком...';
-      const { data, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('tg_id', userTgId)
-        .single();
+      try {
+        const { data, error } = await sbClient
+          .from('players')
+          .select('*')
+          .eq('tg_id', userTgId)
+          .single();
 
-      if (data) {
-        p.seeds = data.seeds;
-        p.phones = data.phones;
-        p.energy = data.energy;
-        p.str = data.str;
-        p.agi = data.agi;
-        p.vit = data.vit;
-        p.hp = data.hp;
-        p.level = data.level;
-        p.friends = data.friends;
-        p.lastDaily = data.last_daily;
-        p.items = data.items || [];
-        p.loot = data.loot || [];
-        p.gear = data.gear;
-        statusEl.innerText = '☁️ Облако подключено ✅';
-      } else {
-        await supabase.from('players').insert([{
-          tg_id: userTgId,
-          name: userName,
-          seeds: 40,
-          phones: 2,
-          energy: 50
-        }]);
-        statusEl.innerText = '☁️ Новый пацан зарегистрирован в облаке!';
+        if (data) {
+          p.seeds = data.seeds;
+          p.phones = data.phones;
+          p.energy = data.energy;
+          p.str = data.str;
+          p.agi = data.agi;
+          p.vit = data.vit;
+          p.hp = data.hp;
+          p.level = data.level;
+          p.friends = data.friends;
+          p.lastDaily = data.last_daily;
+          p.items = data.items || [];
+          p.loot = data.loot || [];
+          p.gear = data.gear;
+          statusEl.innerText = '☁️ Облако подключено ✅';
+        } else {
+          await sbClient.from('players').insert([{
+            tg_id: userTgId,
+            name: userName,
+            seeds: 40,
+            phones: 2,
+            energy: 50
+          }]);
+          statusEl.innerText = '☁️ Новый пацан зарегистрирован в облаке!';
+        }
+      } catch (err) {
+        console.warn("Ошибка загрузки профиля:", err);
+        statusEl.innerText = '💾 Ошибка облака (включен локальный режим)';
+        loadLocal();
       }
       render();
     }
@@ -434,32 +438,36 @@
 
       render();
 
-      if (supabase) {
+      if (sbClient) {
         clearTimeout(syncTimeout);
         syncTimeout = setTimeout(async () => {
-          await supabase.from('players').upsert({
-            tg_id: userTgId,
-            name: userName,
-            seeds: p.seeds,
-            phones: p.phones,
-            energy: p.energy,
-            str: p.str,
-            agi: p.agi,
-            vit: p.vit,
-            hp: p.hp,
-            level: p.level,
-            friends: p.friends,
-            last_daily: p.lastDaily,
-            items: p.items,
-            loot: p.loot,
-            gear: p.gear,
-            updated_at: new Date().toISOString()
-          });
+          try {
+            await sbClient.from('players').upsert({
+              tg_id: userTgId,
+              name: userName,
+              seeds: p.seeds,
+              phones: p.phones,
+              energy: p.energy,
+              str: p.str,
+              agi: p.agi,
+              vit: p.vit,
+              hp: p.hp,
+              level: p.level,
+              friends: p.friends,
+              last_daily: p.lastDaily,
+              items: p.items,
+              loot: p.loot,
+              gear: p.gear,
+              updated_at: new Date().toISOString()
+            });
+          } catch(e) {
+            console.error("Ошибка сохранения в облако:", e);
+          }
         }, 800);
       }
     }
 
-    // ЗВУК
+    // --- ЗВУКОВОЙ ДВИЖОК ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let actx = null;
     function playSound(type) {
@@ -586,10 +594,10 @@
         document.getElementById('loot_wrench').style.color = '#4caf50';
       }
 
-      // Отрисовываем пацана со всеми надетыми вещами на холсте
       drawHero();
     }
 
+    // ТАБЫ (ВКЛАДКИ)
     function tab(id, el) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -798,6 +806,7 @@
       if (p.friends > 0) { p.seeds += p.friends * 2; save(); }
     }, 10000);
 
+    // Запуск игры
     loadCloudProfile();
   </script>
 </body>
