@@ -781,23 +781,34 @@
       setTimeout(() => textEl.remove(), 850);
     }
 
-    // Вешаем тап семок и звуки прямо на пацана
-    window.addEventListener('DOMContentLoaded', () => {
-      updateSoundIcon();
-      const hero = document.getElementById('heroCanvas');
-      if (hero) {
-        hero.style.cursor = 'pointer';
-        hero.addEventListener('click', (e) => {
-          p.seeds += 1;
-          playSound('seed');
-          showPatsanQuote(e);
-          spawnDmgText('+1 🌻', false, e);
-          tg?.HapticFeedback?.impactOccurred('light');
-          save();
-          render();
-        });
-      }
-    });
+    // Отдельная функция для клика по пацану
+function onPatsanClick(e) {
+  try {
+    p.seeds = (p.seeds || 0) + 1;
+    if (typeof playSound === 'function') playSound('seed');
+    if (typeof showPatsanQuote === 'function') showPatsanQuote(e);
+    if (typeof spawnDmgText === 'function') spawnDmgText('+1 🌻', false, e);
+    tg?.HapticFeedback?.impactOccurred('light');
+    if (typeof save === 'function') save();
+    if (typeof render === 'function') render();
+  } catch (err) {
+    console.error("Click error:", err);
+  }
+}
+
+// Привязываем без ожидания DOMContentLoaded
+setTimeout(() => {
+  try {
+    if (typeof updateSoundIcon === 'function') updateSoundIcon();
+    const hero = document.getElementById('heroCanvas');
+    if (hero) {
+      hero.style.cursor = 'pointer';
+      hero.onclick = onPatsanClick;
+    }
+  } catch (err) {
+    console.error("Init clicker error:", err);
+  }
+}, 300);
     let enemy = null;
     const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
     const quotes = [
