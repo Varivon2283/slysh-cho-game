@@ -157,6 +157,27 @@
     <div class="speech-bubble" id="enemyQuote" style="display: none;">— Слышь, ты с какого раёна?</div>
     <div class="battle-log" id="battleLog">Район шумит... Кому объясним за шмот?</div>
 
+<!-- МИРОВОЙ БОСС (РЕЙД) -->
+    <div style="width: 100%; max-width: 320px; background: linear-gradient(180deg, #311b1b, #1a1a1a); border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 14px; box-shadow: 0 0 10px rgba(211,47,47,0.3);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 10px; color: #ff8a80; font-weight: bold; text-transform: uppercase;">⚠️ Общая угроза раёну!</span>
+        <span id="raidStatusBadge" style="font-size: 10px; background: #d32f2f; color: #fff; padding: 2px 6px; border-radius: 4px;">АКТИВЕН</span>
+      </div>
+      <b id="raidBossName" style="font-size: 13px; color: #fff;">🚨 Полковник ОМОНа Громов</b>
+      
+      <div class="hp-bar-wrap" style="height: 14px; margin: 6px 0;">
+        <div id="raidBossHpBar" class="hp-bar" style="width: 100%; background: linear-gradient(90deg, #d32f2f, #ff5252);"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 8px;">
+        <span>Здоровье: <b id="raidBossHpText" style="color:#fff;">10000 / 10000</b></span>
+        <span>Куш: <b style="color: #ffd600;">+5000 🌻</b></span>
+      </div>
+
+      <button id="btnRaidHit" class="btn btn-danger" style="width: 100%; font-size: 12px; padding: 8px;" onclick="hitRaidBoss(event)">
+        💥 Всей толпой на босса (-5 ⚡)
+      </button>
+    </div>
+    
     <div id="districtList" style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 8px;">
       <button class="btn" onclick="startCombat(1)">🧢 Докопаться до Школьника (-5 ⚡)</button>
       <button class="btn" onclick="startCombat(2)">🕶 Осадить Мажора (-10 ⚡)</button>
