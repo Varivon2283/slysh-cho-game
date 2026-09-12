@@ -389,7 +389,7 @@
           await sbClient.from('players').insert([{
             tg_id: userTgId,
             name: userName,
-            seeds: 40,
+            seeds: 50,
             phones: 2,
             energy: 50
           }]);
@@ -404,7 +404,7 @@
     }
 
     function loadLocal() {
-      p.seeds = parseInt(localStorage.getItem('sc_seeds') || '40');
+      p.seeds = parseInt(localStorage.getItem('sc_seeds') || '50');
       p.phones = parseInt(localStorage.getItem('sc_phones') || '2');
       p.energy = parseInt(localStorage.getItem('sc_energy') || '50');
       p.str = parseInt(localStorage.getItem('sc_str') || '5');
