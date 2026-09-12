@@ -878,6 +878,142 @@
         alert("Ошибка связи с сервером: " + err.message);
       }
     }
+// Загрузка топ-10 пацанов из базы
+    async function loadLeaderboard() {
+      const listEl = document.getElementById('leaderboardList');
+      if (!sbClient) {
+        listEl.innerHTML = '<div style="text-align:center; color:#888;">Рейтинг доступен только с подключением к облаку</div>';
+        return;
+      }
+
+      listEl.innerHTML = '<div style="text-align:center; color:#888;">Подтягиваем авторитетов...</div>';
+
+      try {
+        const { data, error } = await sbClient
+          .from('players')
+          .select('name, level, seeds, gear')
+          .order('level', { ascending: false })
+          .order('seeds', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        let html = '';
+        const medals = ['🥇', '🥈', '🥉'];
+
+        data.forEach((player, idx) => {
+          const medal = medals[idx] || `#${idx + 1}`;
+          html += `
+            <div class="list-item" style="border-left: 3px solid ${idx < 3 ? '#ffd600' : '#444'};">
+              <div>
+                <b>${medal} ${escapeHtml(player.name || 'Аноним')}</b>
+                <div style="font-size: 10px; color: #888;">Шмот: ${player.gear || 'Спортивки'}</div>
+              </div>
+              <div style="text-align: right;">
+                <b style="color: #ffb74d;">${player.level} ур.</b>
+                <div style="font-size: 11px; color: #aaa;">${player.seeds} 🌻</div>
+              </div>
+            </div>
+          `;
+        });
+
+        listEl.innerHTML = html || '<div style="text-align:center; color:#888;">Район пуст... Будь первым!</div>';
+      } catch (err) {
+        console.error("Ошибка загрузки лидерборда:", err);
+        listEl.innerHTML = '<div style="text-align:center; color:#e53935;">Не удалось загрузить рейтинг</div>';
+      }
+    }
+
+    // Санитизация имен игроков против XSS
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+
+    // PvP: Наезд на реального пацана из базы
+    async function pvpFindOpponent() {
+      if (p.energy < 10) return alert("Мало энергии для наезда! (Нужно 10 ⚡)");
+      if (!sbClient) return alert("PvP доступно только в сети!");
+
+      const resBox = document.getElementById('pvpResultBox');
+      resBox.style.display = 'block';
+      resBox.innerHTML = '🔍 Высматриваем фраера на районе...';
+
+      p.energy -= 10;
+      save();
+
+      try {
+        // Ищем случайных игроков, исключая себя
+        const { data, error } = await sbClient
+          .from('players')
+          .select('tg_id, name, str, agi, vit, seeds, level')
+          .neq('tg_id', userTgId)
+          .limit(15);
+
+        if (error || !data || data.length === 0) {
+          resBox.innerHTML = 'На районе пока никого нет, все по хатам сидят. Попробуй позже!';
+          return;
+        }
+
+        // Выбираем случайного противника из выборки
+        const opp = data[Math.floor(Math.random() * data.length)];
+        const oppStr = opp.str || 5;
+        const oppAgi = opp.agi || 5;
+        const oppVit = opp.vit || 10;
+        const oppHp = oppVit * 10;
+
+        resBox.innerHTML = `⚔️ Наезд на пацана: <b>${escapeHtml(opp.name)}</b> (${opp.level} ур.)!<br>Махач начался...`;
+
+        setTimeout(() => {
+          // Быстрый расчет боя по статам
+          const myEffStr = getEffectiveStr();
+          const myEffAgi = getEffectiveAgi();
+
+          // Мощь игрока и противника
+          const myPower = (myEffStr * 1.5) + (myEffAgi * 1.2) + (Math.random() * 10);
+          const oppPower = (oppStr * 1.5) + (oppAgi * 1.2) + (Math.random() * 10);
+
+          if (myPower >= oppPower) {
+            // Победа!
+            const stolenSeeds = Math.min(Math.floor((opp.seeds || 10) * 0.2), 50);
+            const reward = Math.max(15, stolenSeeds);
+            p.seeds += reward;
+            p.level += 1;
+            playSound('coin');
+            tg?.HapticFeedback?.notificationOccurred('success');
+
+            resBox.innerHTML = `
+              <b style="color: #4caf50;">🏆 ПОБЕДА!</b><br>
+              Ты вломил пацану <b>${escapeHtml(opp.name)}</b> по первое число!<br>
+              Отжато: <b>+${reward} 🌻</b> и <b>+1 к Чину</b>!
+            `;
+            save();
+            loadLeaderboard();
+          } else {
+            // Поражение
+            const lostSeeds = Math.floor(p.seeds * 0.1);
+            p.seeds = Math.max(0, p.seeds - lostSeeds);
+            p.hp = Math.max(10, Math.floor(p.hp * 0.5));
+            playSound('hit');
+            triggerShake();
+            tg?.HapticFeedback?.notificationOccurred('error');
+
+            resBox.innerHTML = `
+              <b style="color: #e53935;">💀 ТЕБЯ ПОЛОЖИЛИ!</b><br>
+              Пацан <b>${escapeHtml(opp.name)}</b> оказался жестче, чем ты думал.<br>
+              Ты потерял <b>-${lostSeeds} 🌻</b> и половину здоровья!
+            `;
+            save();
+          }
+        }, 1200);
+
+      } catch (e) {
+        console.error("PvP error:", e);
+        resBox.innerHTML = 'Стрела сорвалась: ошибка связи с сервером.';
+      }
+    }
+    
   </script>
 </body>
 </html>
