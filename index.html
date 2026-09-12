@@ -15,7 +15,7 @@
       display: flex; flex-direction: column; height: 100vh; overflow: hidden;
     }
 
-    /* Верхняя панель HUD */
+    /* HUD */
     .hud {
       display: grid; grid-template-columns: repeat(4, 1fr);
       background: #202020; border-bottom: 2px solid #e65100;
@@ -35,7 +35,6 @@
       border: 2px solid #333; margin-bottom: 8px;
     }
 
-    /* Бары здоровья */
     .bar-wrap {
       width: 100%; max-width: 320px; background: #333;
       height: 14px; border-radius: 7px; overflow: hidden; margin: 4px 0 8px;
@@ -49,14 +48,12 @@
       border: 1px solid #333;
     }
 
-    /* Лог боя */
     .battle-log {
-      width: 100%; max-width: 320px; height: 120px; background: #0a0a0a;
+      width: 100%; max-width: 320px; height: 110px; background: #0a0a0a;
       border-radius: 8px; padding: 8px; font-size: 12px; overflow-y: auto;
       border: 1px solid #333; color: #ccc; margin-bottom: 8px; text-align: left;
     }
 
-    /* Карточки врагов и покупок */
     .list-item {
       width: 100%; max-width: 320px; background: #222;
       border: 1px solid #333; border-radius: 8px; padding: 10px;
@@ -69,11 +66,12 @@
     }
     .btn:active { transform: scale(0.97); }
     .btn-boss { background: linear-gradient(180deg, #b71c1c, #d32f2f); box-shadow: 0 0 10px rgba(211,47,47,0.4); }
+    .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
 
-    /* Навигация снизу */
+    /* Навигация */
     .nav-bar { display: flex; background: #1a1a1a; border-top: 1px solid #333; }
     .nav-tab {
-      flex: 1; text-align: center; padding: 12px 0; font-size: 11px;
+      flex: 1; text-align: center; padding: 12px 0; font-size: 10px;
       color: #777; cursor: pointer;
     }
     .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
@@ -105,7 +103,7 @@
       <div style="margin-top: 6px; font-size: 11px; color: #888;">Шмот: <span id="equippedText">Спортивки с рынка</span></div>
     </div>
     
-    <button class="btn" style="margin-top: 12px; width: 100%; max-width: 320px; background: #2e7d32;" onclick="healPlayer()">💊 Подлечиться у аптеки (10 🌻)</button>
+    <button class="btn" style="margin-top: 10px; width: 100%; max-width: 320px; background: #2e7d32;" onclick="healPlayer()">💊 Залечить синяки у аптеки (10 🌻)</button>
   </div>
 
   <!-- ЭКРАН 2: РАЙОН -->
@@ -120,8 +118,8 @@
     <div id="districtList" style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 8px;">
       <button class="btn" onclick="startCombat(1)">🧢 Докопаться до Школьника (-5 ⚡)</button>
       <button class="btn" onclick="startCombat(2)">🕶 Осадить Мажора (-10 ⚡)</button>
-      <button class="btn" onclick="startCombat(3)">👊 Стрела с Местным авторитетом (-15 ⚡)</button>
-      <button class="btn btn-boss" onclick="startCombat(4)">☠️ БОСС РАЙОНА: Михалыч Трудовик (-20 ⚡)</button>
+      <button class="btn" onclick="startCombat(3)">👊 Стрела со Смотрящим (-15 ⚡)</button>
+      <button class="btn btn-boss" onclick="startCombat(4)">☠️ БОСС: Михалыч Трудовик (-20 ⚡)</button>
     </div>
 
     <div id="combatControls" style="width: 100%; max-width: 320px; display: none; gap: 8px;">
@@ -159,9 +157,25 @@
       <button class="btn" id="item_knuckle" onclick="buyGear('knuckle', 180, 6, 0, 0, 'Кастет')">180 🌻</button>
     </div>
     <div class="list-item">
-      <div><b>Кожаный плащ «Братва»</b><br><small>+12 к Выносливости</small></div>
+      <div><b>Кожаный плащ</b><br><small>+12 к Выносливости</small></div>
       <button class="btn" id="item_coat" onclick="buyGear('coat', 350, 0, 0, 12, 'Кожаный плащ')">350 🌻</button>
     </div>
+  </div>
+
+  <!-- ЭКРАН 5: БРАТВА (РЕФЕРАЛЫ) -->
+  <div class="screen" id="screenCrew">
+    <h3 style="margin: 0 0 8px;">Твоя Братва</h3>
+    <p style="font-size: 13px; color: #aaa; text-align: center; max-width: 300px;">
+      Зови корешей на район! Каждый кореш приносит <b>+50 семок</b> сразу и помогает валить боссов.
+    </p>
+
+    <div class="stats-box" style="margin-bottom: 15px; text-align: center;">
+      <div>Корешей в банде: <b id="friendsCount" style="color: #ffb74d; font-size: 18px;">0</b></div>
+      <div style="font-size: 11px; color: #888; margin-top: 4px;">Общак приносит семки каждые 10 секунд!</div>
+    </div>
+
+    <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей в банду</button>
+    <button class="btn" style="margin-top: 10px; background: #333; width: 100%; max-width: 320px;" onclick="copyInviteLink()">📋 Скопировать ссылку</button>
   </div>
 
   <!-- МЕНЮ НАВИГАЦИИ -->
@@ -170,11 +184,49 @@
     <div class="nav-tab" onclick="tab('screenFight', this)">Район 👊</div>
     <div class="nav-tab" onclick="tab('screenGym', this)">Качалка 🏋️</div>
     <div class="nav-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
+    <div class="nav-tab" onclick="tab('screenCrew', this)">Братва 👥</div>
   </div>
 
   <script>
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
+
+    // ЗВУКОВОЙ ДВИЖОК (Web Audio API)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx = null;
+    function playSound(type) {
+      try {
+        if (!actx) actx = new AudioCtx();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain);
+        gain.connect(actx.destination);
+        const now = actx.currentTime;
+
+        if (type === 'hit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        } else if (type === 'crit') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'coin') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.setValueAtTime(900, now + 0.08);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
+        }
+      } catch (e) {}
+    }
 
     let p = {
       seeds: parseInt(localStorage.getItem('sc_seeds') || '40'),
@@ -185,19 +237,18 @@
       vit: parseInt(localStorage.getItem('sc_vit') || '10'),
       hp: parseInt(localStorage.getItem('sc_hp') || '100'),
       level: parseInt(localStorage.getItem('sc_lvl') || '1'),
+      friends: parseInt(localStorage.getItem('sc_friends') || '0'),
       items: JSON.parse(localStorage.getItem('sc_items') || '[]'),
       gear: localStorage.getItem('sc_gear') || 'Спортивки'
     };
 
     let enemy = null;
-
     const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
-
     const roster = {
-      1: { name: "Школьник", hp: 35, str: 3, agi: 2, rew: 15, xp: 10, cost: 5 },
-      2: { name: "Мажор", hp: 80, str: 7, agi: 6, rew: 45, xp: 25, cost: 10 },
-      3: { name: "Смотрящий двора", hp: 160, str: 12, agi: 9, rew: 110, xp: 50, cost: 15 },
-      4: { name: "☠️ Михалыч (Трудовик)", hp: 350, str: 18, agi: 12, rew: 300, xp: 150, cost: 20 }
+      1: { name: "Школьник", hp: 35, str: 3, agi: 2, rew: 15, cost: 5 },
+      2: { name: "Мажор", hp: 80, str: 7, agi: 6, rew: 45, cost: 10 },
+      3: { name: "Смотрящий", hp: 160, str: 12, agi: 9, rew: 110, cost: 15 },
+      4: { name: "☠️ Трудовик Михалыч", hp: 350, str: 18, agi: 12, rew: 300, cost: 20 }
     };
 
     if (tg?.initDataUnsafe?.user?.first_name) {
@@ -214,6 +265,7 @@
       localStorage.setItem('sc_vit', p.vit);
       localStorage.setItem('sc_hp', p.hp);
       localStorage.setItem('sc_lvl', p.level);
+      localStorage.setItem('sc_friends', p.friends);
       localStorage.setItem('sc_items', JSON.stringify(p.items));
       localStorage.setItem('sc_gear', p.gear);
       render();
@@ -230,21 +282,19 @@
       document.getElementById('statAgi').innerText = p.agi;
       document.getElementById('statVit').innerText = p.vit;
       document.getElementById('equippedText').innerText = p.gear;
+      document.getElementById('friendsCount').innerText = p.friends;
 
       const rankIdx = Math.min(ranks.length - 1, Math.floor(p.level / 2));
       document.getElementById('rankName').innerText = ranks[rankIdx];
-
-      // ХП героя полоса
       document.getElementById('heroHpBar').style.width = Math.max(0, (p.hp / maxHp() * 100)) + '%';
 
-      // Цены качалки
       document.getElementById('cStr').innerText = p.str * 6;
       document.getElementById('cAgi').innerText = p.agi * 6;
       document.getElementById('cVit').innerText = p.vit * 4;
 
       p.items.forEach(id => {
         const b = document.getElementById('item_' + id);
-        if (b) { b.innerText = 'Куплено'; b.disabled = true; b.style.background = '#444'; }
+        if (b) { b.innerText = 'Надето'; b.disabled = true; b.style.background = '#444'; }
       });
     }
 
@@ -262,10 +312,11 @@
     }
 
     function healPlayer() {
-      if (p.hp >= maxHp()) return alert('Ты и так здоров как бык!');
-      if (p.seeds < 10) return alert('Не хватает 10 семок на бинты!');
+      if (p.hp >= maxHp()) return alert('Здоров как бык!');
+      if (p.seeds < 10) return alert('Не хватает 10 семок!');
       p.seeds -= 10;
       p.hp = maxHp();
+      playSound('coin');
       tg?.HapticFeedback?.notificationOccurred('success');
       save();
     }
@@ -276,25 +327,48 @@
       p.seeds -= cost;
       p[stat]++;
       if (stat === 'vit') p.hp += 10;
+      playSound('coin');
       tg?.HapticFeedback?.notificationOccurred('success');
       save();
     }
 
     function buyGear(id, cost, s, a, v, name) {
-      if (p.seeds < cost) return alert('Денег нет — иди отжимай!');
+      if (p.seeds < cost) return alert('Мало семок!');
       p.seeds -= cost;
       p.str += s; p.agi += a; p.vit += v;
       p.items.push(id);
       p.gear = name;
+      playSound('coin');
       tg?.HapticFeedback?.notificationOccurred('success');
       save();
     }
 
+    // РЕФЕРАЛЫ
+    function getBotLink() {
+      const botName = 'твой_бот'; // При необходимости можно вставить свой юзернейм
+      const myId = tg?.initDataUnsafe?.user?.id || 'ref1';
+      return `https://t.me/share/url?url=https://t.me/slysh_cho_game_bot?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
+    }
+
+    function inviteFriends() {
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(getBotLink());
+      } else {
+        copyInviteLink();
+      }
+    }
+
+    function copyInviteLink() {
+      const dummyUrl = `https://t.me/slysh_cho_game_bot?start=${tg?.initDataUnsafe?.user?.id || '1'}`;
+      navigator.clipboard?.writeText(dummyUrl);
+      alert('Инвайт-ссылка скопирована в буфер обмена!');
+    }
+
     // БОЕВКА
     function startCombat(id) {
-      if (p.hp <= 15) return alert('Ты еле стоишь на ногах! Подлечись на главной.');
+      if (p.hp <= 15) return alert('Ты еле дышишь! Поправь здоровье на главной.');
       const t = roster[id];
-      if (p.energy < t.cost) return alert('Нет энергии! Отдохни.');
+      if (p.energy < t.cost) return alert('Нет энергии!');
 
       p.energy -= t.cost;
       enemy = { ...t, curHp: t.hp, maxHp: t.hp };
@@ -312,20 +386,27 @@
       if (!enemy) return;
       tg?.HapticFeedback?.impactOccurred('medium');
 
-      // Атака игрока
+      // Удар игрока
       const dodge = Math.random() < (enemy.agi * 0.025);
       if (dodge) {
-        log(`💨 ${enemy.name} дернулся и увернулся!`);
+        log(`💨 ${enemy.name} увернулся!`);
       } else {
-        const crit = Math.random() < (p.agi * 0.02);
+        const crit = Math.random() < (p.agi * 0.025);
         let dmg = Math.max(3, p.str + Math.floor(Math.random() * 4));
-        if (crit) { dmg = Math.floor(dmg * 1.7); log(`💥 <b>КРИТИЧЕСКИЙ В ЧЕЛЮСТЬ!</b>`); }
+        if (crit) {
+          dmg = Math.floor(dmg * 1.8);
+          playSound('crit');
+          log(`💥 <b>КРИТИЧЕСКИЙ В ЧЕЛЮСТЬ!</b> -${dmg}`);
+        } else {
+          playSound('hit');
+          log(`👊 Ты пробил на <b>${dmg}</b> урона!`);
+        }
         enemy.curHp -= dmg;
-        log(`👊 Ты влепил на <b>${dmg}</b> урона!`);
       }
 
       if (enemy.curHp <= 0) {
-        log(`🏆 <b>${enemy.name} повержен!</b> Отжато: ${enemy.rew} семок!`);
+        playSound('coin');
+        log(`🏆 <b>${enemy.name} повержен!</b> +${enemy.rew} семок!`);
         p.seeds += enemy.rew;
         p.level++;
         tg?.HapticFeedback?.notificationOccurred('success');
@@ -333,24 +414,30 @@
         return;
       }
 
-      // Ответка врага
-      const heroDodge = Math.random() < (p.agi * 0.03);
-      if (heroDodge) {
-        log(`⚡ Ты четко ушел от плюхи!`);
-      } else {
-        let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
-        p.hp = Math.max(0, p.hp - eDmg);
-        log(`🤕 ${enemy.name} пробил тебе на <b>${eDmg}</b> урона!`);
-      }
+      // Ответка противника
+      setTimeout(() => {
+        const heroDodge = Math.random() < (p.agi * 0.03);
+        if (heroDodge) {
+          log(`⚡ Ты увернулся от выпада!`);
+        } else {
+          let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
+          p.hp = Math.max(0, p.hp - eDmg);
+          playSound('hit');
+          log(`🤕 Враг в ответ нанёс <b>${eDmg}</b> урона!`);
+        }
 
-      if (p.hp <= 0) {
-        tg?.HapticFeedback?.notificationOccurred('error');
-        alert('Тебя вырубили! Ты очнулся без сознания и потерял немного семок.');
-        p.seeds = Math.floor(p.seeds * 0.7);
-        p.hp = 20;
-        resetCombat();
-        return;
-      }
+        if (p.hp <= 0) {
+          tg?.HapticFeedback?.notificationOccurred('error');
+          alert('Тебя вырубили! Ты очнулся и потерял часть семок.');
+          p.seeds = Math.floor(p.seeds * 0.7);
+          p.hp = 25;
+          resetCombat();
+        } else {
+          document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
+          document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
+          save();
+        }
+      }, 250);
 
       document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
       document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
@@ -358,7 +445,7 @@
     }
 
     function runAway() {
-      log('🏃 Ты позорно сбежал во дворы...');
+      log('🏃 Ты убежал во дворы...');
       resetCombat();
     }
 
@@ -371,10 +458,18 @@
       save();
     }
 
-    // Регенерация энергии (+1 в 3 сек)
+    // Регенерация энергии (+1 каждые 3 сек)
     setInterval(() => {
       if (p.energy < p.maxEnergy) { p.energy++; save(); }
     }, 3000);
+
+    // Пассивный доход от братвы (каждые 10 сек)
+    setInterval(() => {
+      if (p.friends > 0) {
+        p.seeds += p.friends * 2;
+        save();
+      }
+    }, 10000);
 
     render();
   </script>
