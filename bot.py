@@ -25,11 +25,18 @@ def get_main_kb():
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message, command: CommandObject):
     user = message.from_user
-    ref_id = command.args
+    ref_arg = command.args  # Параметр из ссылки ?start=XXXXX
+
+    print(f"--> /start от пользователя {user.id} ({user.first_name}), реферал arg: {ref_arg}")
 
     try:
+        # 1. Проверяем, есть ли пользователь в базе
         res = supabase.table("players").select("*").eq("tg_id", user.id).execute()
-        if not res.data:
+        
+        is_new_user = not res.data or len(res.data) == 0
+
+        if is_new_user:
+            print(f"Новый пацан на районе! Регаем ID: {user.id}")
             supabase.table("players").insert({
                 "tg_id": user.id,
                 "name": user.first_name,
@@ -38,28 +45,51 @@ async def cmd_start(message: types.Message, command: CommandObject):
                 "energy": 50
             }).execute()
 
-            if ref_id and ref_id.isdigit() and int(ref_id) != user.id:
-                inviter_id = int(ref_id)
-                inviter_res = supabase.table("players").select("*").eq("tg_id", inviter_id).execute()
-                if inviter_res.data:
-                    inv = inviter_res.data[0]
-                    supabase.table("players").update({
-                        "seeds": inv["seeds"] + 100,
-                        "phones": inv["phones"] + 1,
-                        "friends": inv["friends"] + 1
-                    }).eq("tg_id", inviter_id).execute()
+            # 2. Проверяем реферальную ссылку
+            if ref_arg and ref_arg.isdigit():
+                inviter_id = int(ref_arg)
 
-                    try:
-                        await bot.send_message(
-                            inviter_id,
-                            f"👊 Твой кореш <b>{user.first_name}</b> залетел на район!\nВ общак упало: <b>+100 🌻</b> и <b>+1 📱</b>!",
-                            parse_mode="HTML"
-                        )
-                    except Exception:
-                        pass
+                # Нельзя пригласить самого себя
+                if inviter_id != user.id:
+                    print(f"Начисляем бонус пригласившему ID: {inviter_id}")
+                    inv_res = supabase.table("players").select("*").eq("tg_id", inviter_id).execute()
+                    
+                    if inv_res.data and len(inv_res.data) > 0:
+                        inv = inv_res.data[0]
+                        current_seeds = inv.get("seeds") or 0
+                        current_phones = inv.get("phones") or 0
+                        current_friends = inv.get("friends") or 0
+
+                        supabase.table("players").update({
+                            "seeds": current_seeds + 100,
+                            "phones": current_phones + 1,
+                            "friends": current_friends + 1
+                        }).eq("tg_id", inviter_id).execute()
+
+                        # Отправляем победный пуш пригласившему
+                        try:
+                            await bot.send_message(
+                                chat_id=inviter_id,
+                                text=(
+                                    f"👊 Твой кореш <b>{user.first_name}</b> залетел на район!\n"
+                                    f"В общак упало: <b>+100 🌻</b> и <b>+1 📱</b>!"
+                                ),
+                                parse_mode="HTML"
+                            )
+                            print(f"Уведомление успешно доставлено пацану {inviter_id}!")
+                        except Exception as send_err:
+                            print(f"Не удалось отправить сообщение {inviter_id}: {send_err}")
+                    else:
+                        print(f"Пригласивший ID {inviter_id} не найден в таблице players.")
+                else:
+                    print("Попытка пригласить самого себя проигнорирована.")
+        else:
+            print(f"Пользователь {user.id} уже есть в базе — бонус не начисляется повторно.")
+
     except Exception as e:
-        print(f"Ошибка БД: {e}")
+        print(f"Критическая ошибка БД при /start: {e}")
 
+    # Отправляем приветствие с кнопкой запуска
     await message.answer(
         f"Здорово, <b>{user.first_name}</b>! Добро пожаловать на район.\nЖми кнопку ниже, чтобы начать поднимать авторитет!",
         reply_markup=get_main_kb(),
