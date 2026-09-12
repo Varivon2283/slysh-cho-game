@@ -121,7 +121,6 @@
     <div>⚡ Энергия<div class="hud-num"><span id="hudEnergy">50</span>/50</div></div>
     <div>❤️ ХП<div class="hud-num"><span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div></div>
     <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
-    <div onclick="toggleSoundMute()" id="soundToggleBtn" style="cursor: pointer; font-size: 16px; padding: 2px 6px; user-select: none;">🔊</div>
   </div>
 
   <!-- ДВОР (ХОЛСТ ВМЕСТО КАРТИНКИ) -->
@@ -611,117 +610,40 @@
     }
 
     // --- ЗВУКОВОЙ ДВИЖОК ---
-    // Состояние звука (сохраняем выбор в памяти)
-    let isSoundMuted = localStorage.getItem('soundMuted') === 'true';
-
-    function updateSoundIcon() {
-      const btn = document.getElementById('soundToggleBtn');
-      if (btn) btn.innerText = isSoundMuted ? '🔇' : '🔊';
-    }
-
-    function toggleSoundMute() {
-      isSoundMuted = !isSoundMuted;
-      localStorage.setItem('soundMuted', isSoundMuted);
-      updateSoundIcon();
-      if (!isSoundMuted) playSound('click');
-    }
-
-    // Инициализация Web Audio контекста
-    let audioCtx = null;
-    function getAudioContext() {
-      if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      return audioCtx;
-    }
-
-    // Синтезатор уличных звуков
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx = null;
     function playSound(type) {
-      if (isSoundMuted) return;
-
       try {
-        const ctx = getAudioContext();
-        const now = ctx.currentTime;
+        if (!actx) actx = new AudioCtx();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain);
+        gain.connect(actx.destination);
+        const now = actx.currentTime;
 
         if (type === 'hit') {
-          // Глухой удар в челюсть (Bass Thud + Distortion)
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-          gain.gain.setValueAtTime(1, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.15);
-
-        } else if (type === 'crit') {
-          // Хруст / Мощный панч
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(260, now);
-          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
-          gain.gain.setValueAtTime(0.8, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.25);
-
-        } else if (type === 'coin' || type === 'seed') {
-          // Звон мелочи / Щелчок семечки
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(987.77, now); // B5
-          osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
           gain.gain.setValueAtTime(0.3, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.25);
-
-        } else if (type === 'click') {
-          // Короткий клик
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        } else if (type === 'crit') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'coin') {
           osc.type = 'sine';
           osc.frequency.setValueAtTime(600, now);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.04);
-
-        } else if (type === 'levelUp') {
-          // Победный пацанский фанфар (арпеджио)
-          const notes = [261.63, 329.63, 392.00, 523.25]; // C - E - G - C
-          notes.forEach((freq, index) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            const startT = now + index * 0.08;
-            gain.gain.setValueAtTime(0.3, startT);
-            gain.gain.exponentialRampToValueAtTime(0.01, startT + 0.2);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(startT);
-            osc.stop(startT + 0.2);
-          });
+          osc.frequency.setValueAtTime(900, now + 0.08);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
         }
-      } catch (err) {
-        console.warn("Audio play error:", err);
-      }
+      } catch (e) {}
     }
 
     function triggerShake() {
@@ -742,73 +664,7 @@
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 650);
     }
-// --- ПАЦАНСКИЕ ЦИТАТЫ И КЛИКЕР ВО ДВОРЕ ---
-    const PATSAN_QUOTES = [
-      "Слышь, сюда иди!",
-      "Семки есть?",
-      "Чё такой дерзкий?",
-      "Район под нами!",
-      "Фарту масти!",
-      "В натуре чётко!",
-      "Не шелести особо!",
-      "Опа, чирик упал!",
-      "За пацанов стоим!",
-      "По понятиям живи!"
-    ];
 
-    function showPatsanQuote(e) {
-      if (Math.random() > 0.4) return;
-      const quote = PATSAN_QUOTES[Math.floor(Math.random() * PATSAN_QUOTES.length)];
-      const textEl = document.createElement('div');
-      textEl.innerText = quote;
-      textEl.style.position = 'fixed';
-      const x = e ? (e.clientX || (e.touches && e.touches[0]?.clientX)) : (window.innerWidth / 2);
-      const y = e ? (e.clientY || (e.touches && e.touches[0]?.clientY)) : 220;
-      textEl.style.left = `${x || (window.innerWidth / 2)}px`;
-      textEl.style.top = `${(y || 220) - 20}px`;
-      textEl.style.color = '#ffd600';
-      textEl.style.fontWeight = 'bold';
-      textEl.style.fontSize = '12px';
-      textEl.style.textShadow = '0 0 4px #000, 0 0 8px #000';
-      textEl.style.pointerEvents = 'none';
-      textEl.style.zIndex = '999';
-      textEl.style.transition = 'all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)';
-      document.body.appendChild(textEl);
-      requestAnimationFrame(() => {
-        textEl.style.transform = 'translate(-50%, -40px) scale(1.15)';
-        textEl.style.opacity = '0';
-      });
-      setTimeout(() => textEl.remove(), 850);
-    }
-
-    // Отдельная функция для клика по пацану
-function onPatsanClick(e) {
-  try {
-    p.seeds = (p.seeds || 0) + 1;
-    if (typeof playSound === 'function') playSound('seed');
-    if (typeof showPatsanQuote === 'function') showPatsanQuote(e);
-    if (typeof spawnDmgText === 'function') spawnDmgText('+1 🌻', false, e);
-    tg?.HapticFeedback?.impactOccurred('light');
-    if (typeof save === 'function') save();
-    if (typeof render === 'function') render();
-  } catch (err) {
-    console.error("Click error:", err);
-  }
-}
-
-// Привязываем без ожидания DOMContentLoaded
-setTimeout(() => {
-  try {
-    if (typeof updateSoundIcon === 'function') updateSoundIcon();
-    const hero = document.getElementById('heroCanvas');
-    if (hero) {
-      hero.style.cursor = 'pointer';
-      hero.onclick = onPatsanClick;
-    }
-  } catch (err) {
-    console.error("Init clicker error:", err);
-  }
-}, 300);
     let enemy = null;
     const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
     const quotes = [
@@ -886,7 +742,6 @@ setTimeout(() => {
 
     // ТАБЫ (ВКЛАДКИ)
     function tab(id, el) {
-      playSound('click');
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -1848,51 +1703,6 @@ let raidBossData = null;
       }
 
       thimbleBet = 0; // Сброс ставки после раунда
-    }
-    const PATSAN_QUOTES = [
-      "Слышь, сюда иди!",
-      "Семки есть?",
-      "Чё такой дерзкий?",
-      "Район под нами!",
-      "Фарту масти!",
-      "В натуре чётко!",
-      "Не шелести особо!",
-      "Опа, чирик упал!",
-      "За пацанов стоим!",
-      "По понятиям живи!"
-    ];
-
-    function showPatsanQuote(e) {
-      // С шансом 30% при тапе показываем фразочку
-      if (Math.random() > 0.35) return;
-
-      const quote = PATSAN_QUOTES[Math.floor(Math.random() * PATSAN_QUOTES.length)];
-      const textEl = document.createElement('div');
-      textEl.innerText = quote;
-      textEl.style.position = 'fixed';
-      
-      // Позиционируем в месте клика или по центру двора
-      const x = e ? (e.clientX || (e.touches && e.touches[0]?.clientX)) : (window.innerWidth / 2 - 40);
-      const y = e ? (e.clientY || (e.touches && e.touches[0]?.clientY)) : 220;
-
-      textEl.style.left = `${x || (window.innerWidth / 2 - 40)}px`;
-      textEl.style.top = `${(y || 220) - 20}px`;
-      textEl.style.color = '#ffd600';
-      textEl.style.fontWeight = 'bold';
-      textEl.style.fontSize = '12px';
-      textEl.style.textShadow = '0 0 4px #000, 0 0 8px #000';
-      textEl.style.pointerEvents = 'none';
-      textEl.style.zIndex = '999';
-      textEl.style.transition = 'all 0.9s cubic-bezier(0.2, 0.8, 0.2, 1)';
-
-      document.body.appendChild(textEl);
-
-      requestAnimationFrame(() => {
-        textEl.style.transform = `translate(-50%, -40px) scale(1.15)`;
-        textEl.style.opacity = '0';
-      });
-
-      setTimeout(() => textEl.remove(), 950);
     }
     setInterval(calcAfkIncome, 10000);
   </script>
