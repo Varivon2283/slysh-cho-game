@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Слышь Чо</title>
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: #1a1a1a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      user-select: none;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      background: #2b2b2b;
+      border-bottom: 2px solid #ffcc00;
+    }
+    .stat-box { font-size: 14px; font-weight: bold; }
+    .content { padding: 20px; text-align: center; }
+    .action-btn {
+      width: 100%;
+      padding: 15px;
+      margin-top: 15px;
+      background: #e65100;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div class="stat-box">🌻 Семки: <span id="seeds">...</span></div>
+    <div class="stat-box">⚡ Энергия: <span id="energy">...</span>/100</div>
+    <div class="stat-box">👑 Уровень: <span id="level">1</span></div>
+  </div>
+
+  <div class="content">
+    <h2 id="player-name">Загрузка...</h2>
+    <div id="character-view">
+      <!-- Место под Canvas или спрайт персонажа -->
+      <img src="assets/patsan_base.png" alt="Пацан" style="max-height: 250px;">
+    </div>
+    
+    <button class="action-btn" onclick="goToDistrict()">Пойти на район (минус 10 ⚡)</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Разворачиваем окно на весь экран
+
+    async function initGame() {
+      // Отправляем initData на бэкенд для верификации и получения профиля
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ init_data: tg.initData })
+      });
+      
+      const profile = await response.json();
+      document.getElementById('player-name').innerText = profile.first_name || "Четкий пацан";
+      document.getElementById('seeds').innerText = profile.seeds;
+      document.getElementById('energy').innerText = profile.energy;
+    }
+
+    function goToDistrict() {
+      tg.HapticFeedback.impactOccurred('medium'); // Тактильный отклик в ТГ
+      // Логика перехода к бою
+    }
+
+    initGame();
+  </script>
+</body>
+</html>
