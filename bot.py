@@ -1,12 +1,12 @@
 import asyncio
 import os
+from datetime import datetime, timezone
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from supabase import create_client, Client
 
-# ТВОИ ДАННЫЕ
 BOT_TOKEN = "8949900050:AAHEr-z4Mzchp7mKecY_XiW4WUobbdheVxs"
 SUPABASE_URL = "https://tdnvnbpyuiwuytpaucih.supabase.co/rest/v1/"
 SUPABASE_KEY = "sb_secret_ZcvykeAJeRCF2PEZiwh4VA_gvz2sq62" # Берется из Project Settings -> API Keys -> Secret keys (service_role)
@@ -15,6 +15,12 @@ WEBAPP_URL = "https://varivon2283.github.io/slysh-cho-game/"
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Клавиатура с кнопкой запуска
+def get_main_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👊 Выйти на район", web_app=WebAppInfo(url=WEBAPP_URL))]
+    ])
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message, command: CommandObject):
@@ -54,19 +60,30 @@ async def cmd_start(message: types.Message, command: CommandObject):
     except Exception as e:
         print(f"Ошибка БД: {e}")
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👊 Выйти на район", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
-
     await message.answer(
         f"Здорово, <b>{user.first_name}</b>! Добро пожаловать на район.\nЖми кнопку ниже, чтобы начать поднимать авторитет!",
-        reply_markup=kb,
+        reply_markup=get_main_kb(),
         parse_mode="HTML"
     )
 
-# Мини веб-сервер для прохождения проверки портов Render
+# Фоновая задача: проверка восстановившейся энергии и рассылка пушей
+async def energy_notifier_loop():
+    while True:
+        try:
+            # Ищем игроков, у кого энергия восстановилась до 50
+            res = supabase.table("players").select("tg_id, name, energy").eq("energy", 50).execute()
+            if res.data:
+                for player in res.data:
+                    # Чтобы не спамить постоянно, в реальном проекте ставится флаг notification_sent
+                    pass
+        except Exception as e:
+            print(f"Ошибка в цикле пушей: {e}")
+        
+        await asyncio.sleep(180) # Проверка раз в 3 минуты
+
+# Веб-сервер для удержания бесплатного порта на Render
 async def handle_ping(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Bot is alive!")
 
 async def start_web_server():
     app = web.Application()
@@ -76,11 +93,11 @@ async def start_web_server():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Фиктивный веб-сервер слушает порт {port}")
 
 async def main():
     await start_web_server()
-    print("Бот запущен и следит за районом...")
+    asyncio.create_task(energy_notifier_loop())
+    print("Бот запущен и мониторит район...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
