@@ -9,33 +9,44 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0; padding: 0;
-      background: #141414; color: #fff;
+      background: #121212; color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
       display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       position: relative;
     }
 
-    /* Всплывающие цифры урона */
+    /* Эффект тряски экрана при ударе */
+    .shake { animation: screenShake 0.18s ease-in-out; }
+    @keyframes screenShake {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-4px, 3px); }
+      50% { transform: translate(4px, -3px); }
+      75% { transform: translate(-2px, -2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* Всплывающий урон */
     .dmg-popup {
-      position: absolute; font-size: 20px; font-weight: 900;
+      position: absolute; font-size: 22px; font-weight: 900;
       color: #ff3d00; pointer-events: none; z-index: 999;
-      animation: flyUp 0.7s ease-out forwards;
+      animation: flyUp 0.65s ease-out forwards;
       text-shadow: 0 2px 4px #000;
     }
-    .dmg-popup.crit { color: #ffd600; font-size: 26px; }
+    .dmg-popup.crit { color: #ffd600; font-size: 28px; }
     @keyframes flyUp {
       0% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-50px) scale(1.3); }
+      100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
     }
 
     /* HUD */
     .hud {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      background: #1e1e1e; border-bottom: 2px solid #e65100;
-      padding: 8px 4px; text-align: center; font-size: 11px;
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      background: #1c1c1c; border-bottom: 2px solid #e65100;
+      padding: 6px 2px; text-align: center; font-size: 10px;
     }
-    .hud-num { font-size: 14px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
+    .hud-num { font-size: 13px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
+    .hud-phones { color: #40c4ff; }
 
     /* Экраны */
     .screen {
@@ -51,43 +62,44 @@
 
     .bar-wrap {
       width: 100%; max-width: 320px; background: #333;
-      height: 14px; border-radius: 7px; overflow: hidden; margin: 4px 0 8px;
+      height: 12px; border-radius: 6px; overflow: hidden; margin: 4px 0 6px;
     }
     .bar-fill-hp { height: 100%; background: #e53935; transition: width 0.2s; }
     .bar-fill-enemy { height: 100%; background: #8e24aa; transition: width 0.2s; }
 
     .stats-box {
-      width: 100%; max-width: 320px; background: #202020;
-      border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6;
+      width: 100%; max-width: 320px; background: #1e1e1e;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5;
       border: 1px solid #333;
     }
 
     .speech-bubble {
-      width: 100%; max-width: 320px; background: #2a2a2a;
+      width: 100%; max-width: 320px; background: #262626;
       border-left: 4px solid #e65100; padding: 8px 12px;
       font-style: italic; font-size: 13px; color: #ffcc80;
       margin-bottom: 8px; border-radius: 0 8px 8px 0;
     }
 
     .battle-log {
-      width: 100%; max-width: 320px; height: 100px; background: #0a0a0a;
+      width: 100%; max-width: 320px; height: 95px; background: #0a0a0a;
       border-radius: 8px; padding: 8px; font-size: 12px; overflow-y: auto;
       border: 1px solid #333; color: #ccc; margin-bottom: 8px; text-align: left;
     }
 
     .list-item {
-      width: 100%; max-width: 320px; background: #202020;
-      border: 1px solid #333; border-radius: 8px; padding: 10px;
+      width: 100%; max-width: 320px; background: #1e1e1e;
+      border: 1px solid #333; border-radius: 8px; padding: 9px;
       margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
     }
 
     .btn {
       background: #e65100; color: #fff; border: none;
-      padding: 9px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;
+      padding: 9px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;
     }
     .btn:active { transform: scale(0.97); }
     .btn-boss { background: linear-gradient(180deg, #b71c1c, #d32f2f); box-shadow: 0 0 10px rgba(211,47,47,0.4); }
     .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
+    .btn-blue { background: #0288d1; }
 
     /* Навигация */
     .nav-bar { display: flex; background: #181818; border-top: 1px solid #333; }
@@ -98,35 +110,36 @@
     .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
   </style>
 </head>
-<body>
+<body id="gameBody">
 
-  <!-- HUD -->
+  <!-- HUD С ПЯТЬЮ ПОКАЗАТЕЛЯМИ -->
   <div class="hud">
     <div>🌻 Семки<div class="hud-num" id="hudSeeds">0</div></div>
+    <div>📱 Мобилы<div class="hud-num hud-phones" id="hudPhones">0</div></div>
     <div>⚡ Энергия<div class="hud-num"><span id="hudEnergy">50</span>/50</div></div>
-    <div>❤️ Здоровье<div class="hud-num"><span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div></div>
-    <div>👑 Авторитет<div class="hud-num" id="hudLevel">1</div></div>
+    <div>❤️ ХП<div class="hud-num"><span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div></div>
+    <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
   </div>
 
   <!-- ЭКРАН 1: ДВОР -->
   <div class="screen active" id="screenHome">
-    <h3 style="margin: 4px 0 6px;" id="heroName">Четкий пацан</h3>
+    <h3 style="margin: 2px 0 6px;" id="heroName">Четкий пацан</h3>
     <img src="assets/preview.jpg" onerror="this.src='https://placehold.co/640x360/222/e65100?text=Слышь+Чо%3F'" class="hero-banner">
 
     <div style="width: 100%; max-width: 320px; text-align: left; font-size: 11px; color: #aaa;">Здоровье:</div>
     <div class="bar-wrap"><div class="bar-fill-hp" id="heroHpBar"></div></div>
 
     <div class="stats-box">
-      <div>💪 Сила: <b id="statStr">5</b></div>
-      <div>⚡ Ловкость: <b id="statAgi">5</b></div>
-      <div>🛡 Выносливость: <b id="statVit">10</b></div>
+      <div>💪 Сила: <b id="statStr">5</b> <span id="bonusStr" style="color: #4caf50;"></span></div>
+      <div>⚡ Ловкость: <b id="statAgi">5</b> <span id="bonusAgi" style="color: #4caf50;"></span></div>
+      <div>🛡 Выносливость: <b id="statVit">10</b> <span id="bonusVit" style="color: #4caf50;"></span></div>
       <div>Погремуха: <b id="rankName">Шнырь</b></div>
       <div style="margin-top: 4px; font-size: 11px; color: #888;">Шмот: <span id="equippedText">Спортивки</span></div>
     </div>
     
     <div style="width: 100%; max-width: 320px; display: flex; gap: 8px; margin-top: 8px;">
       <button class="btn" style="flex: 1; background: #2e7d32;" onclick="healPlayer()">💊 Подлечиться (10 🌻)</button>
-      <button class="btn" style="flex: 1; background: #d84315;" id="btnDaily" onclick="claimDailyBonus()">🎁 Грев с зоны</button>
+      <button class="btn" style="flex: 1; background: #d84315;" onclick="claimDailyBonus()">🎁 Грев с зоны</button>
     </div>
   </div>
 
@@ -157,7 +170,7 @@
   <div class="screen" id="screenGym">
     <h3 style="margin: 0 0 10px;">Подвальная качалка</h3>
     <div class="list-item">
-      <div><b>Жим ржавой штанги</b><br><small>+1 к Силе</small></div>
+      <div><b>Жим штанги</b><br><small>+1 к Силе</small></div>
       <button class="btn" onclick="upgrade('str')"><span id="cStr">20</span> 🌻</button>
     </div>
     <div class="list-item">
@@ -170,9 +183,9 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 4: ЛАРЕК -->
+  <!-- ЭКРАН 4: ЛАРЕК И БАРЫГА -->
   <div class="screen" id="screenShop">
-    <h3 style="margin: 0 0 10px;">Ларёк «У Ашота»</h3>
+    <h3 style="margin: 0 0 8px;">Ларёк «У Ашота»</h3>
     <div class="list-item">
       <div><b>Чётки лагерные</b><br><small>+2 Сила, +2 Ловкость</small></div>
       <button class="btn" id="item_rosary" onclick="buyGear('rosary', 80, 2, 2, 0, 'Чётки')">80 🌻</button>
@@ -185,24 +198,34 @@
       <div><b>Кожаный плащ</b><br><small>+12 к Выносливости</small></div>
       <button class="btn" id="item_coat" onclick="buyGear('coat', 350, 0, 0, 12, 'Кожаный плащ')">350 🌻</button>
     </div>
+
+    <h4 style="margin: 12px 0 6px; color: #40c4ff;">Скупка у Барыги (За мобилы 📱)</h4>
+    <div class="list-item">
+      <div><b>Мешок семок (500 шт)</b><br><small>Мгновенно разбогатеть</small></div>
+      <button class="btn btn-blue" onclick="buySeedsForPhones(1, 500)">1 📱</button>
+    </div>
+    <div class="list-item">
+      <div><b>Банка энергетика Flash</b><br><small>Фулл энергия (50 ⚡)</small></div>
+      <button class="btn btn-blue" onclick="restoreEnergyForPhone()">1 📱</button>
+    </div>
   </div>
 
-  <!-- ЭКРАН 5: ХАБАР (КОЛЛЕКЦИИ) -->
+  <!-- ЭКРАН 5: ХАБАР -->
   <div class="screen" id="screenLoot">
     <h3 style="margin: 0 0 6px;">Хабар со дворов</h3>
-    <p style="font-size: 12px; color: #aaa; text-align: center; max-width: 300px; margin-bottom: 12px;">
-      Выбивай редкие артефакты в драках на районе. Полная коллекция дает +10 ко всем статам!
-    </p>
+    <div id="setBonusAlert" style="display: none; background: #2e7d32; padding: 6px 12px; border-radius: 6px; font-size: 11px; margin-bottom: 8px;">
+      👑 Сет собран! +10 ко всем статам активировано!
+    </div>
     <div class="list-item">
-      <div>🥇 <b>Золотая фикса</b><br><small>Выпадает с Мажора</small></div>
+      <div>🥇 <b>Золотая фикса</b><br><small>Падает с Мажора</small></div>
       <div id="loot_fixa" style="color: #666;">Не найдено</div>
     </div>
     <div class="list-item">
-      <div>🔥 <b>Зажигалка Cricket</b><br><small>Выпадает со Школьника</small></div>
+      <div>🔥 <b>Зажигалка Cricket</b><br><small>Падает со Школьника</small></div>
       <div id="loot_lighter" style="color: #666;">Не найдено</div>
     </div>
     <div class="list-item">
-      <div>🔩 <b>Гаечный ключ на 32</b><br><small>Падает с Трудовика</small></div>
+      <div>🔩 <b>Ключ на 32</b><br><small>Падает с Михалыча</small></div>
       <div id="loot_wrench" style="color: #666;">Не найдено</div>
     </div>
   </div>
@@ -210,14 +233,14 @@
   <!-- ЭКРАН 6: БРАТВА -->
   <div class="screen" id="screenCrew">
     <h3 style="margin: 0 0 8px;">Твоя Братва</h3>
-    <p style="font-size: 13px; color: #aaa; text-align: center; max-width: 300px;">
-      Зови корешей! Каждый кореш приносит <b>семки на пассиве</b>.
+    <p style="font-size: 12px; color: #aaa; text-align: center; max-width: 300px;">
+      Зови корешей! Каждый кореш приносит <b>семки на пассиве</b> и <b>+1 мобилу 📱</b> в карман!
     </p>
-    <div class="stats-box" style="margin-bottom: 15px; text-align: center;">
+    <div class="stats-box" style="margin-bottom: 12px; text-align: center;">
       <div>Корешей в банде: <b id="friendsCount" style="color: #ffb74d; font-size: 18px;">0</b></div>
       <div style="font-size: 11px; color: #888; margin-top: 4px;">Общак приносит семки каждые 10 сек!</div>
     </div>
-    <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей в банду</button>
+    <button class="btn btn-tg" onclick="inviteFriends()">📢 Позвать корешей (+1 📱)</button>
   </div>
 
   <!-- НАВИГАЦИЯ -->
@@ -270,7 +293,13 @@
       } catch (e) {}
     }
 
-    // Всплывающие цифры урона
+    function triggerShake() {
+      const b = document.getElementById('gameBody');
+      b.classList.remove('shake');
+      void b.offsetWidth; // перезапуск css-анимации
+      b.classList.add('shake');
+    }
+
     function spawnDmgText(text, isCrit, event) {
       const el = document.createElement('div');
       el.className = 'dmg-popup' + (isCrit ? ' crit' : '');
@@ -280,11 +309,12 @@
       el.style.left = (x - 20) + 'px';
       el.style.top = y + 'px';
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 700);
+      setTimeout(() => el.remove(), 650);
     }
 
     let p = {
       seeds: parseInt(localStorage.getItem('sc_seeds') || '40'),
+      phones: parseInt(localStorage.getItem('sc_phones') || '2'),
       energy: parseInt(localStorage.getItem('sc_energy') || '50'),
       maxEnergy: 50,
       str: parseInt(localStorage.getItem('sc_str') || '5'),
@@ -319,10 +349,18 @@
       document.getElementById('heroName').innerText = tg.initDataUnsafe.user.first_name;
     }
 
-    function maxHp() { return p.vit * 10; }
+    function hasFullSet() {
+      return p.loot.includes('lighter') && p.loot.includes('fixa') && p.loot.includes('wrench');
+    }
+
+    function getEffectiveStr() { return p.str + (hasFullSet() ? 10 : 0); }
+    function getEffectiveAgi() { return p.agi + (hasFullSet() ? 10 : 0); }
+    function getEffectiveVit() { return p.vit + (hasFullSet() ? 10 : 0); }
+    function maxHp() { return getEffectiveVit() * 10; }
 
     function save() {
       localStorage.setItem('sc_seeds', p.seeds);
+      localStorage.setItem('sc_phones', p.phones);
       localStorage.setItem('sc_energy', p.energy);
       localStorage.setItem('sc_str', p.str);
       localStorage.setItem('sc_agi', p.agi);
@@ -339,6 +377,7 @@
 
     function render() {
       document.getElementById('hudSeeds').innerText = p.seeds;
+      document.getElementById('hudPhones').innerText = p.phones;
       document.getElementById('hudEnergy').innerText = p.energy;
       document.getElementById('hudHp').innerText = p.hp;
       document.getElementById('hudMaxHp').innerText = maxHp();
@@ -349,6 +388,12 @@
       document.getElementById('statVit').innerText = p.vit;
       document.getElementById('equippedText').innerText = p.gear;
       document.getElementById('friendsCount').innerText = p.friends;
+
+      const isSet = hasFullSet();
+      document.getElementById('bonusStr').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('bonusAgi').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('bonusVit').innerText = isSet ? '(+10 Сет)' : '';
+      document.getElementById('setBonusAlert').style.display = isSet ? 'block' : 'none';
 
       const rankIdx = Math.min(ranks.length - 1, Math.floor(p.level / 2));
       document.getElementById('rankName').innerText = ranks[rankIdx];
@@ -363,7 +408,6 @@
         if (b) { b.innerText = 'Надето'; b.disabled = true; b.style.background = '#444'; }
       });
 
-      // Отображение хабара
       if (p.loot.includes('lighter')) {
         document.getElementById('loot_lighter').innerText = '✅ В кармане';
         document.getElementById('loot_lighter').style.color = '#4caf50';
@@ -391,18 +435,16 @@
       l.scrollTop = l.scrollHeight;
     }
 
-    // Ежедневный бонус
     function claimDailyBonus() {
       const today = new Date().toDateString();
-      if (p.lastDaily === today) {
-        return alert('Грев уже получен! Заходи завтра.');
-      }
+      if (p.lastDaily === today) return alert('Грев уже получен! Заходи завтра.');
       p.lastDaily = today;
       p.seeds += 100;
+      p.phones += 1;
       p.energy = p.maxEnergy;
       playSound('coin');
       tg?.HapticFeedback?.notificationOccurred('success');
-      alert('Грев с зоны подогнал +100 семок и восстановил всю энергию!');
+      alert('Грев с зоны подогнал +100 семок, +1 Мобилу 📱 и зарядил энергию!');
       save();
     }
 
@@ -438,11 +480,36 @@
       save();
     }
 
+    // Покупка за Мобилы
+    function buySeedsForPhones(costPhones, gainSeeds) {
+      if (p.phones < costPhones) return alert('Не хватает мобил! Зови корешей или жди ежедневный грев.');
+      p.phones -= costPhones;
+      p.seeds += gainSeeds;
+      playSound('coin');
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    function restoreEnergyForPhone() {
+      if (p.phones < 1) return alert('Нужна 1 мобила 📱!');
+      p.phones -= 1;
+      p.energy = p.maxEnergy;
+      playSound('coin');
+      tg?.HapticFeedback?.notificationOccurred('success');
+      alert('Энергетик выпит! Энергия на максимуме (50 ⚡)');
+      save();
+    }
+
     function inviteFriends() {
       const botUsername = 'slysh_cho_bot';
       const myId = tg?.initDataUnsafe?.user?.id || 'ref1';
-      const url = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!`;
-      if (tg?.openTelegramLink) tg.openTelegramLink(url);
+      const url = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(url);
+      } else {
+        navigator.clipboard?.writeText(`https://t.me/${botUsername}?start=${myId}`);
+        alert('Инвайт-ссылка скопирована в буфер обмена!');
+      }
     }
 
     // БОЕВКА
@@ -471,14 +538,18 @@
     function strikeEnemy(e) {
       if (!enemy) return;
       tg?.HapticFeedback?.impactOccurred('medium');
+      triggerShake();
+
+      const effStr = getEffectiveStr();
+      const effAgi = getEffectiveAgi();
 
       const dodge = Math.random() < (enemy.agi * 0.025);
       if (dodge) {
         log(`💨 ${enemy.name} увернулся!`);
         spawnDmgText('МИМО', false, e);
       } else {
-        const crit = Math.random() < (p.agi * 0.025);
-        let dmg = Math.max(3, p.str + Math.floor(Math.random() * 4));
+        const crit = Math.random() < (effAgi * 0.025);
+        let dmg = Math.max(3, effStr + Math.floor(Math.random() * 4));
         if (crit) {
           dmg = Math.floor(dmg * 1.8);
           playSound('crit');
@@ -498,10 +569,9 @@
         p.seeds += enemy.rew;
         p.level++;
 
-        // Шанс дропа хабара (35%)
         if (enemy.drop && !p.loot.includes(enemy.drop) && Math.random() < 0.35) {
           p.loot.push(enemy.drop);
-          alert('🔥 Ты отжал редкий хабар с поверженного! Проверь вкладку «Хабар».');
+          alert('🔥 Отжат редкий хабар! Проверь вкладку «Хабар».');
         }
 
         tg?.HapticFeedback?.notificationOccurred('success');
@@ -511,19 +581,20 @@
 
       // Ответный удар
       setTimeout(() => {
-        const heroDodge = Math.random() < (p.agi * 0.03);
+        const heroDodge = Math.random() < (effAgi * 0.03);
         if (heroDodge) {
-          log(`⚡ Ты увернулся!`);
+          log(`⚡ Ты увернулся от выпада!`);
         } else {
           let eDmg = Math.max(2, enemy.str + Math.floor(Math.random() * 3));
           p.hp = Math.max(0, p.hp - eDmg);
           playSound('hit');
+          triggerShake();
           log(`🤕 Враг ответил на <b>${eDmg}</b> урона!`);
         }
 
         if (p.hp <= 0) {
           tg?.HapticFeedback?.notificationOccurred('error');
-          alert('Тебя вырубили! Ты очнулся без сознания и потерял часть семок.');
+          alert('Тебя вырубили! Ты очнулся и потерял часть семок.');
           p.seeds = Math.floor(p.seeds * 0.7);
           p.hp = 25;
           resetCombat();
@@ -532,7 +603,7 @@
           document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
           save();
         }
-      }, 250);
+      }, 230);
 
       document.getElementById('enemyTitle').innerText = `${enemy.name} (${Math.max(0, enemy.curHp)} HP)`;
       document.getElementById('enemyHpBar').style.width = (Math.max(0, enemy.curHp) / enemy.maxHp * 100) + '%';
@@ -540,7 +611,7 @@
     }
 
     function runAway() {
-      log('🏃 Ты убежал во дворы...');
+      log('🏃 Ты дал дёру по дворам...');
       resetCombat();
     }
 
