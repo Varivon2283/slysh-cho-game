@@ -9,7 +9,7 @@ from supabase import create_client, Client
 
 BOT_TOKEN = "8949900050:AAHEr-z4Mzchp7mKecY_XiW4WUobbdheVxs"
 SUPABASE_URL = "https://tdnvnbpyuiwuytpaucih.supabase.co"
-SUPABASE_KEY = "sb_secret_ZcvykeAJeRCF2PEZiwh4VA_gvz2sq62" # Берется из Project Settings -> API Keys -> Secret keys (service_role)
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbnZuYnB5dWl3dXl0cGF1Y2loIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTIxNTI4MiwiZXhwIjoyMTA0NzkxMjgyfQ.V7kzf_gAvxiMG4_Hgf3fIpBJiCcihW0-dtEAlkEmb9w" # Берется из Project Settings -> API Keys -> Secret keys (service_role)
 WEBAPP_URL = "https://varivon2283.github.io/slysh-cho-game/"
 
 bot = Bot(token=BOT_TOKEN)
