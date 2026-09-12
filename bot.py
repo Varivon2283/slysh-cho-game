@@ -1,5 +1,6 @@
 import asyncio
 import os
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -18,45 +19,41 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message, command: CommandObject):
     user = message.from_user
-    ref_id = command.args  # ID того, кто пригласил
+    ref_id = command.args
 
-    # Проверяем, есть ли уже этот пацан в базе
-    res = supabase.table("players").select("*").eq("tg_id", user.id).execute()
-    
-    if not res.data:
-        # Новый игрок — регистрируем
-        supabase.table("players").insert({
-            "tg_id": user.id,
-            "name": user.first_name,
-            "seeds": 50,
-            "phones": 2,
-            "energy": 50
-        }).execute()
+    try:
+        res = supabase.table("players").select("*").eq("tg_id", user.id).execute()
+        if not res.data:
+            supabase.table("players").insert({
+                "tg_id": user.id,
+                "name": user.first_name,
+                "seeds": 50,
+                "phones": 2,
+                "energy": 50
+            }).execute()
 
-        # Если пришел по реферальной ссылке
-        if ref_id and ref_id.isdigit() and int(ref_id) != user.id:
-            inviter_id = int(ref_id)
-            # Находим пригласившего
-            inviter_res = supabase.table("players").select("*").eq("tg_id", inviter_id).execute()
-            if inviter_res.data:
-                inv = inviter_res.data[0]
-                supabase.table("players").update({
-                    "seeds": inv["seeds"] + 100,
-                    "phones": inv["phones"] + 1,
-                    "friends": inv["friends"] + 1
-                }).eq("tg_id", inviter_id).execute()
+            if ref_id and ref_id.isdigit() and int(ref_id) != user.id:
+                inviter_id = int(ref_id)
+                inviter_res = supabase.table("players").select("*").eq("tg_id", inviter_id).execute()
+                if inviter_res.data:
+                    inv = inviter_res.data[0]
+                    supabase.table("players").update({
+                        "seeds": inv["seeds"] + 100,
+                        "phones": inv["phones"] + 1,
+                        "friends": inv["friends"] + 1
+                    }).eq("tg_id", inviter_id).execute()
 
-                # Отправляем уведомление пригласившему
-                try:
-                    await bot.send_message(
-                        inviter_id,
-                        f"👊 Твой кореш <b>{user.first_name}</b> залетел на район!\nВ общак упало: <b>+100 🌻</b> и <b>+1 📱</b>!",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass
+                    try:
+                        await bot.send_message(
+                            inviter_id,
+                            f"👊 Твой кореш <b>{user.first_name}</b> залетел на район!\nВ общак упало: <b>+100 🌻</b> и <b>+1 📱</b>!",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+    except Exception as e:
+        print(f"Ошибка БД: {e}")
 
-    # Кнопка открытия Mini App
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="👊 Выйти на район", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
@@ -67,43 +64,24 @@ async def cmd_start(message: types.Message, command: CommandObject):
         parse_mode="HTML"
     )
 
+# Мини веб-сервер для прохождения проверки портов Render
+async def handle_ping(request):
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    port = int(os.environ.get("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Фиктивный веб-сервер слушает порт {port}")
+
 async def main():
+    await start_web_server()
     print("Бот запущен и следит за районом...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-from aiogram.types import LabeledPrice, PreCheckoutQuery
-
-# Создание счета на оплату 50 Stars за 5 Мобил
-@dp.message(lambda msg: msg.text == "/buy_phones")
-async def send_stars_invoice(message: types.Message):
-    prices = [LabeledPrice(label="5 Мобил 📱", amount=50)] # amount в Stars
-    await bot.send_invoice(
-        chat_id=message.chat.id,
-        title="Пакет мобил для района",
-        description="5 новеньких мобил 📱 в карман для прокачки и семок",
-        payload="buy_phones_5",
-        currency="XTR", # XTR — официальный код Telegram Stars
-        prices=prices,
-        provider_token="" # Для Telegram Stars provider_token всегда оставляется пустым!
-    )
-
-# Обязательное подтверждение доступности товара
-@dp.pre_checkout_query()
-async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-
-# Начисление после успешной оплаты
-@dp.message(lambda msg: msg.successful_payment is not None)
-async def process_successful_payment(message: types.Message):
-    payment = message.successful_payment
-    user_id = message.from_user.id
-    
-    if payment.invoice_payload == "buy_phones_5":
-        # Начисляем 5 мобил в Supabase
-        res = supabase.table("players").select("phones").eq("tg_id", user_id).single().execute()
-        if res.data:
-            new_phones = res.data["phones"] + 5
-            supabase.table("players").update({"phones": new_phones}).eq("tg_id", user_id).execute()
-            await message.answer("✅ Барыга подогнал товар! 5 мобил 📱 упали на твой счет в игре.")
