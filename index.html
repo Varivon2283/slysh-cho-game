@@ -315,7 +315,7 @@
     <div class="nav-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
     <div class="nav-tab" onclick="tab('screenTop', this); loadLeaderboard();">Топ 👑</div>
     <div class="nav-tab" onclick="tab('screenLoot', this)">Хабар 🎒</div>
-    <div class="nav-tab" onclick="tab('screenCrew', this)">Братва 👥</div>
+    <div class="nav-tab" onclick="tab('screenCrew', this); loadGangData();">Братва 👥</div>
   </div>
   
   <script>
@@ -353,7 +353,8 @@
       lastDaily: '',
       items: [],
       loot: [],
-      gear: 'Спортивки'
+      gear: 'Спортивки',
+      gang_id: null
     };
 
     // --- ОТРИСОВКА ХОЛСТА ПЕРСОНАЖА (CANVAS) ---
@@ -1053,6 +1054,159 @@
       } catch (e) {
         console.error("PvP error:", e);
         resBox.innerHTML = 'Стрела сорвалась: ошибка связи с сервером.';
+      }
+    }
+
+let currentGang = null;
+
+    async function loadGangData() {
+      if (!sbClient) return;
+
+      const activeBox = document.getElementById('gangActiveBox');
+      const createBox = document.getElementById('gangCreateBox');
+      const gangsListEl = document.getElementById('gangsLeaderboard');
+
+      try {
+        // 1. Проверяем, состоит ли игрок в банде
+        if (p.gang_id) {
+          const { data: gang } = await sbClient
+            .from('gangs')
+            .select('*')
+            .eq('id', p.gang_id)
+            .maybeSingle();
+
+          if (gang) {
+            currentGang = gang;
+            document.getElementById('myGangName').innerText = gang.name;
+            document.getElementById('myGangBank').innerText = gang.bank;
+            document.getElementById('myGangMembers').innerText = gang.members_count;
+            activeBox.style.display = 'block';
+            createBox.style.display = 'none';
+          } else {
+            p.gang_id = null;
+            activeBox.style.display = 'none';
+            createBox.style.display = 'block';
+          }
+        } else {
+          activeBox.style.display = 'none';
+          createBox.style.display = 'block';
+        }
+
+        // 2. Загружаем рейтинг банд
+        const { data: topGangs, error } = await sbClient
+          .from('gangs')
+          .select('*')
+          .order('bank', { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
+
+        if (!topGangs || topGangs.length === 0) {
+          gangsListEl.innerHTML = '<div style="text-align:center; color:#777; font-size:11px;">Бандитских группировок ещё нет. Создай первую!</div>';
+        } else {
+          let gHtml = '';
+          topGangs.forEach((g, i) => {
+            const isMy = p.gang_id === g.id;
+            gHtml += `
+              <div class="list-item" style="border-left: 3px solid ${isMy ? '#4caf50' : '#888'}; margin-bottom: 6px;">
+                <div>
+                  <b>#${i + 1} ${escapeHtml(g.name)}</b>
+                  <div style="font-size: 10px; color: #888;">Бойцов: ${g.members_count}</div>
+                </div>
+                <div style="text-align: right;">
+                  <b style="color: #ffd600; font-size: 12px;">${g.bank} 🌻</b>
+                  ${!p.gang_id ? `<button class="btn" style="padding: 3px 8px; font-size: 10px; margin-top: 4px;" onclick="joinGang(${g.id})">Вступить</button>` : ''}
+                </div>
+              </div>
+            `;
+          });
+          gangsListEl.innerHTML = gHtml;
+        }
+
+      } catch (err) {
+        console.error("Gang load error:", err);
+      }
+    }
+
+    async function createGang() {
+      const input = document.getElementById('newGangName');
+      const name = input.value.trim();
+
+      if (!name) return alert("Введи погоняло банды!");
+      if (name.length < 3) return alert("Слишком короткое название!");
+      if (p.seeds < 100 || p.phones < 1) return alert("Нужно 100 семок и 1 мобила!");
+
+      p.seeds -= 100;
+      p.phones -= 1;
+      save();
+
+      try {
+        const { data, error } = await sbClient
+          .from('gangs')
+          .insert([{
+            name: name,
+            leader_id: userTgId,
+            bank: 100,
+            members_count: 1
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          alert("Такая бригада уже существует или произошел сбой!");
+          return;
+        }
+
+        p.gang_id = data.id;
+        await sbClient.from('players').update({ gang_id: data.id }).eq('tg_id', userTgId);
+        playSound('coin');
+        alert(`Бригада «${name}» сформирована! Держите район!`);
+        input.value = '';
+        loadGangData();
+      } catch (err) {
+        alert("Ошибка создания: " + err.message);
+      }
+    }
+
+    async function joinGang(gangId) {
+      if (p.gang_id) return alert("Ты уже состоишь в банде!");
+
+      try {
+        p.gang_id = gangId;
+        await sbClient.from('players').update({ gang_id: gangId }).eq('tg_id', userTgId);
+
+        // Увеличиваем счетчик бойцов
+        const { data: gang } = await sbClient.from('gangs').select('members_count').eq('id', gangId).single();
+        if (gang) {
+          await sbClient.from('gangs').update({ members_count: (gang.members_count || 1) + 1 }).eq('id', gangId);
+        }
+
+        playSound('coin');
+        alert("Ты влился в ряды группировки! Не подводи пацанов.");
+        loadGangData();
+      } catch (err) {
+        alert("Ошибка вступления: " + err.message);
+      }
+    }
+
+    async function depositToGangBank() {
+      if (!currentGang) return;
+      if (p.seeds < 50) return alert("Не хватает 50 семок для общака!");
+
+      p.seeds -= 50;
+      save();
+
+      try {
+        const newBank = (currentGang.bank || 0) + 50;
+        await sbClient.from('gangs').update({ bank: newBank }).eq('id', currentGang.id);
+        currentGang.bank = newBank;
+        document.getElementById('myGangBank').innerText = newBank;
+        playSound('coin');
+        tg?.HapticFeedback?.notificationOccurred('success');
+        alert("В общак упало +50 🌻! Авторитет банды растет.");
+        loadGangData();
+      } catch (err) {
+        console.error("Deposit error:", err);
       }
     }
     
