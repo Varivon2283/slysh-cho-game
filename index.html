@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Слышь Чо?</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -16,7 +18,6 @@
       position: relative;
     }
 
-    /* Эффект тряски экрана при ударе */
     .shake { animation: screenShake 0.18s ease-in-out; }
     @keyframes screenShake {
       0% { transform: translate(0, 0); }
@@ -26,7 +27,6 @@
       100% { transform: translate(0, 0); }
     }
 
-    /* Всплывающий урон */
     .dmg-popup {
       position: absolute; font-size: 22px; font-weight: 900;
       color: #ff3d00; pointer-events: none; z-index: 999;
@@ -39,7 +39,6 @@
       100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
     }
 
-    /* HUD */
     .hud {
       display: grid; grid-template-columns: repeat(5, 1fr);
       background: #1c1c1c; border-bottom: 2px solid #e65100;
@@ -48,7 +47,6 @@
     .hud-num { font-size: 13px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
     .hud-phones { color: #40c4ff; }
 
-    /* Экраны */
     .screen {
       flex: 1; display: none; flex-direction: column;
       align-items: center; padding: 12px; overflow-y: auto;
@@ -101,18 +99,21 @@
     .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
     .btn-blue { background: #0288d1; }
 
-    /* Навигация */
     .nav-bar { display: flex; background: #181818; border-top: 1px solid #333; }
     .nav-tab {
       flex: 1; text-align: center; padding: 10px 0; font-size: 9px;
       color: #777; cursor: pointer;
     }
     .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
+
+    #cloudStatus {
+      font-size: 10px; color: #888; text-align: center; margin-bottom: 4px;
+    }
   </style>
 </head>
 <body id="gameBody">
 
-  <!-- HUD С ПЯТЬЮ ПОКАЗАТЕЛЯМИ -->
+  <!-- HUD -->
   <div class="hud">
     <div>🌻 Семки<div class="hud-num" id="hudSeeds">0</div></div>
     <div>📱 Мобилы<div class="hud-num hud-phones" id="hudPhones">0</div></div>
@@ -121,8 +122,9 @@
     <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
   </div>
 
-  <!-- ЭКРАН 1: ДВОР -->
+  <!-- ДВОР -->
   <div class="screen active" id="screenHome">
+    <div id="cloudStatus">☁️ Подключение к облаку...</div>
     <h3 style="margin: 2px 0 6px;" id="heroName">Четкий пацан</h3>
     <img src="assets/preview.jpg" onerror="this.src='https://placehold.co/640x360/222/e65100?text=Слышь+Чо%3F'" class="hero-banner">
 
@@ -143,7 +145,7 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 2: РАЙОН -->
+  <!-- РАЙОН -->
   <div class="screen" id="screenFight">
     <div style="width: 100%; max-width: 320px; text-align: center; margin-bottom: 4px;">
       <b id="enemyTitle" style="font-size: 14px;">Выбери цель</b>
@@ -166,7 +168,7 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 3: КАЧАЛКА -->
+  <!-- КАЧАЛКА -->
   <div class="screen" id="screenGym">
     <h3 style="margin: 0 0 10px;">Подвальная качалка</h3>
     <div class="list-item">
@@ -183,7 +185,7 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 4: ЛАРЕК И БАРЫГА -->
+  <!-- ЛАРЕК -->
   <div class="screen" id="screenShop">
     <h3 style="margin: 0 0 8px;">Ларёк «У Ашота»</h3>
     <div class="list-item">
@@ -205,12 +207,12 @@
       <button class="btn btn-blue" onclick="buySeedsForPhones(1, 500)">1 📱</button>
     </div>
     <div class="list-item">
-      <div><b>Банка энергетика Flash</b><br><small>Фулл энергия (50 ⚡)</small></div>
+      <div><b>Банка Flash</b><br><small>Фулл энергия (50 ⚡)</small></div>
       <button class="btn btn-blue" onclick="restoreEnergyForPhone()">1 📱</button>
     </div>
   </div>
 
-  <!-- ЭКРАН 5: ХАБАР -->
+  <!-- ХАБАР -->
   <div class="screen" id="screenLoot">
     <h3 style="margin: 0 0 6px;">Хабар со дворов</h3>
     <div id="setBonusAlert" style="display: none; background: #2e7d32; padding: 6px 12px; border-radius: 6px; font-size: 11px; margin-bottom: 8px;">
@@ -230,11 +232,11 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 6: БРАТВА -->
+  <!-- БРАТВА -->
   <div class="screen" id="screenCrew">
     <h3 style="margin: 0 0 8px;">Твоя Братва</h3>
     <p style="font-size: 12px; color: #aaa; text-align: center; max-width: 300px;">
-      Зови корешей! Каждый кореш приносит <b>семки на пассиве</b> и <b>+1 мобилу 📱</b> в карман!
+      Зови корешей! Каждый кореш приносит <b>семки на пассиве</b> и <b>+1 мобилу 📱</b>!
     </p>
     <div class="stats-box" style="margin-bottom: 12px; text-align: center;">
       <div>Корешей в банде: <b id="friendsCount" style="color: #ffb74d; font-size: 18px;">0</b></div>
@@ -254,9 +256,150 @@
   </div>
 
   <script>
+    // НАСТРОЙКА ОБЛАКА SUPABASE
+    // ЗАМЕНИ ЭТИ ДВЕ СТРОЧКИ НА СВОИ ИЗ SUPABASE:
+    const SUPABASE_URL = 'https://tdnvnbpyuiwuytpaucih.supabase.co/rest/v1/';
+    const SUPABASE_ANON_KEY = 'sb_publishable_gXMjGOLhnY4I9hwGSqM-SA_jIe_rBN9';
+    
+    let supabase = null;
+    try {
+      if (SUPABASE_URL.indexOf('YOUR_PROJECT') === -1) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch(e) {}
+
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
+    const userTgId = tg?.initDataUnsafe?.user?.id || 12345678;
+    const userName = tg?.initDataUnsafe?.user?.first_name || 'Четкий пацан';
+    document.getElementById('heroName').innerText = userName;
+
+    let p = {
+      seeds: 40,
+      phones: 2,
+      energy: 50,
+      maxEnergy: 50,
+      str: 5,
+      agi: 5,
+      vit: 10,
+      hp: 100,
+      level: 1,
+      friends: 0,
+      lastDaily: '',
+      items: [],
+      loot: [],
+      gear: 'Спортивки'
+    };
+
+    // Загрузка данных из облака
+    async function loadCloudProfile() {
+      const statusEl = document.getElementById('cloudStatus');
+      if (!supabase) {
+        statusEl.innerText = '💾 Локальный режим (без облака)';
+        loadLocal();
+        return;
+      }
+
+      statusEl.innerText = '☁️ Синхронизация с облаком...';
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('tg_id', userTgId)
+        .single();
+
+      if (data) {
+        p.seeds = data.seeds;
+        p.phones = data.phones;
+        p.energy = data.energy;
+        p.str = data.str;
+        p.agi = data.agi;
+        p.vit = data.vit;
+        p.hp = data.hp;
+        p.level = data.level;
+        p.friends = data.friends;
+        p.lastDaily = data.last_daily;
+        p.items = data.items || [];
+        p.loot = data.loot || [];
+        p.gear = data.gear;
+        statusEl.innerText = '☁️ Облако подключено ✅';
+      } else {
+        // Новый игрок — создаем запись в Supabase
+        await supabase.from('players').insert([{
+          tg_id: userTgId,
+          name: userName,
+          seeds: 40,
+          phones: 2,
+          energy: 50
+        }]);
+        statusEl.innerText = '☁️ Новый пацан зарегистрирован в облаке!';
+      }
+      render();
+    }
+
+    function loadLocal() {
+      p.seeds = parseInt(localStorage.getItem('sc_seeds') || '40');
+      p.phones = parseInt(localStorage.getItem('sc_phones') || '2');
+      p.energy = parseInt(localStorage.getItem('sc_energy') || '50');
+      p.str = parseInt(localStorage.getItem('sc_str') || '5');
+      p.agi = parseInt(localStorage.getItem('sc_agi') || '5');
+      p.vit = parseInt(localStorage.getItem('sc_vit') || '10');
+      p.hp = parseInt(localStorage.getItem('sc_hp') || '100');
+      p.level = parseInt(localStorage.getItem('sc_lvl') || '1');
+      p.friends = parseInt(localStorage.getItem('sc_friends') || '0');
+      p.lastDaily = localStorage.getItem('sc_daily') || '';
+      p.items = JSON.parse(localStorage.getItem('sc_items') || '[]');
+      p.loot = JSON.parse(localStorage.getItem('sc_loot') || '[]');
+      p.gear = localStorage.getItem('sc_gear') || 'Спортивки';
+      render();
+    }
+
+    // Сохранение в облако (с дебаунсом, чтобы не спамить базу)
+    let syncTimeout = null;
+    function save() {
+      // Всегда дублируем локально
+      localStorage.setItem('sc_seeds', p.seeds);
+      localStorage.setItem('sc_phones', p.phones);
+      localStorage.setItem('sc_energy', p.energy);
+      localStorage.setItem('sc_str', p.str);
+      localStorage.setItem('sc_agi', p.agi);
+      localStorage.setItem('sc_vit', p.vit);
+      localStorage.setItem('sc_hp', p.hp);
+      localStorage.setItem('sc_lvl', p.level);
+      localStorage.setItem('sc_friends', p.friends);
+      localStorage.setItem('sc_daily', p.lastDaily);
+      localStorage.setItem('sc_items', JSON.stringify(p.items));
+      localStorage.setItem('sc_loot', JSON.stringify(p.loot));
+      localStorage.setItem('sc_gear', p.gear);
+
+      render();
+
+      if (supabase) {
+        clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(async () => {
+          await supabase.from('players').upsert({
+            tg_id: userTgId,
+            name: userName,
+            seeds: p.seeds,
+            phones: p.phones,
+            energy: p.energy,
+            str: p.str,
+            agi: p.agi,
+            vit: p.vit,
+            hp: p.hp,
+            level: p.level,
+            friends: p.friends,
+            last_daily: p.lastDaily,
+            items: p.items,
+            loot: p.loot,
+            gear: p.gear,
+            updated_at: new Date().toISOString()
+          });
+        }, 800);
+      }
+    }
+
+    // ЗВУК
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let actx = null;
     function playSound(type) {
@@ -296,7 +439,7 @@
     function triggerShake() {
       const b = document.getElementById('gameBody');
       b.classList.remove('shake');
-      void b.offsetWidth; // перезапуск css-анимации
+      void b.offsetWidth;
       b.classList.add('shake');
     }
 
@@ -311,23 +454,6 @@
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 650);
     }
-
-    let p = {
-      seeds: parseInt(localStorage.getItem('sc_seeds') || '40'),
-      phones: parseInt(localStorage.getItem('sc_phones') || '2'),
-      energy: parseInt(localStorage.getItem('sc_energy') || '50'),
-      maxEnergy: 50,
-      str: parseInt(localStorage.getItem('sc_str') || '5'),
-      agi: parseInt(localStorage.getItem('sc_agi') || '5'),
-      vit: parseInt(localStorage.getItem('sc_vit') || '10'),
-      hp: parseInt(localStorage.getItem('sc_hp') || '100'),
-      level: parseInt(localStorage.getItem('sc_lvl') || '1'),
-      friends: parseInt(localStorage.getItem('sc_friends') || '0'),
-      lastDaily: localStorage.getItem('sc_daily') || '',
-      items: JSON.parse(localStorage.getItem('sc_items') || '[]'),
-      loot: JSON.parse(localStorage.getItem('sc_loot') || '[]'),
-      gear: localStorage.getItem('sc_gear') || 'Спортивки'
-    };
 
     let enemy = null;
     const ranks = ["Шнырь", "Шестерка", "Пацанчик", "Четкий", "Бригадир", "Авторитет", "Вор в законе"];
@@ -345,10 +471,6 @@
       4: { name: "☠️ Трудовик Михалыч", hp: 350, str: 18, agi: 12, rew: 300, drop: 'wrench', cost: 20 }
     };
 
-    if (tg?.initDataUnsafe?.user?.first_name) {
-      document.getElementById('heroName').innerText = tg.initDataUnsafe.user.first_name;
-    }
-
     function hasFullSet() {
       return p.loot.includes('lighter') && p.loot.includes('fixa') && p.loot.includes('wrench');
     }
@@ -357,23 +479,6 @@
     function getEffectiveAgi() { return p.agi + (hasFullSet() ? 10 : 0); }
     function getEffectiveVit() { return p.vit + (hasFullSet() ? 10 : 0); }
     function maxHp() { return getEffectiveVit() * 10; }
-
-    function save() {
-      localStorage.setItem('sc_seeds', p.seeds);
-      localStorage.setItem('sc_phones', p.phones);
-      localStorage.setItem('sc_energy', p.energy);
-      localStorage.setItem('sc_str', p.str);
-      localStorage.setItem('sc_agi', p.agi);
-      localStorage.setItem('sc_vit', p.vit);
-      localStorage.setItem('sc_hp', p.hp);
-      localStorage.setItem('sc_lvl', p.level);
-      localStorage.setItem('sc_friends', p.friends);
-      localStorage.setItem('sc_daily', p.lastDaily);
-      localStorage.setItem('sc_items', JSON.stringify(p.items));
-      localStorage.setItem('sc_loot', JSON.stringify(p.loot));
-      localStorage.setItem('sc_gear', p.gear);
-      render();
-    }
 
     function render() {
       document.getElementById('hudSeeds').innerText = p.seeds;
@@ -480,9 +585,8 @@
       save();
     }
 
-    // Покупка за Мобилы
     function buySeedsForPhones(costPhones, gainSeeds) {
-      if (p.phones < costPhones) return alert('Не хватает мобил! Зови корешей или жди ежедневный грев.');
+      if (p.phones < costPhones) return alert('Не хватает мобил! Зови корешей.');
       p.phones -= costPhones;
       p.seeds += gainSeeds;
       playSound('coin');
@@ -496,25 +600,24 @@
       p.energy = p.maxEnergy;
       playSound('coin');
       tg?.HapticFeedback?.notificationOccurred('success');
-      alert('Энергетик выпит! Энергия на максимуме (50 ⚡)');
+      alert('Энергия восстановлена на максимум!');
       save();
     }
 
     function inviteFriends() {
       const botUsername = 'slysh_cho_bot';
-      const myId = tg?.initDataUnsafe?.user?.id || 'ref1';
+      const myId = userTgId;
       const url = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
       if (tg?.openTelegramLink) {
         tg.openTelegramLink(url);
       } else {
         navigator.clipboard?.writeText(`https://t.me/${botUsername}?start=${myId}`);
-        alert('Инвайт-ссылка скопирована в буфер обмена!');
+        alert('Инвайт-ссылка скопирована!');
       }
     }
 
-    // БОЕВКА
     function startCombat(id) {
-      if (p.hp <= 15) return alert('Ты еле дышишь! Поправь здоровье на главной.');
+      if (p.hp <= 15) return alert('Ты еле дышишь! Подлечись.');
       const t = roster[id];
       if (p.energy < t.cost) return alert('Нет энергии!');
 
@@ -579,7 +682,6 @@
         return;
       }
 
-      // Ответный удар
       setTimeout(() => {
         const heroDodge = Math.random() < (effAgi * 0.03);
         if (heroDodge) {
@@ -633,7 +735,8 @@
       if (p.friends > 0) { p.seeds += p.friends * 2; save(); }
     }, 10000);
 
-    render();
+    // Старт
+    loadCloudProfile();
   </script>
 </body>
 </html>
