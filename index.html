@@ -345,9 +345,17 @@
 
     // РЕФЕРАЛЫ
     function getBotLink() {
-      const botName = 'твой_бот'; // При необходимости можно вставить свой юзернейм
+      const botUsername = 'slysh_cho_bot';
       const myId = tg?.initDataUnsafe?.user?.id || 'ref1';
-      return `https://t.me/share/url?url=https://t.me/slysh_cho_game_bot?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
+      return `https://t.me/share/url?url=https://t.me/${botUsername}?start=${myId}&text=Слышь,%20залетай%20на%20район!%20Поднимаем%20авторитет%20вместе!`;
+    }
+
+    function copyInviteLink() {
+      const botUsername = 'slysh_cho_bot';
+      const myId = tg?.initDataUnsafe?.user?.id || '1';
+      const dummyUrl = `https://t.me/${botUsername}?start=${myId}`;
+      navigator.clipboard?.writeText(dummyUrl);
+      alert('Инвайт-ссылка скопирована в буфер обмена!');
     }
 
     function inviteFriends() {
@@ -356,12 +364,6 @@
       } else {
         copyInviteLink();
       }
-    }
-
-    function copyInviteLink() {
-      const dummyUrl = `https://t.me/slysh_cho_game_bot?start=${tg?.initDataUnsafe?.user?.id || '1'}`;
-      navigator.clipboard?.writeText(dummyUrl);
-      alert('Инвайт-ссылка скопирована в буфер обмена!');
     }
 
     // БОЕВКА
