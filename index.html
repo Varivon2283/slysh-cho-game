@@ -485,6 +485,7 @@
         loadLocal();
       }
       render();
+      loadRaidBoss();
     }
 
     function loadLocal() {
@@ -687,6 +688,9 @@
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       el.classList.add('active');
+      if (id === 'screenFight') {
+        loadRaidBoss();
+      }
     }
 
     function log(txt) {
@@ -1228,6 +1232,104 @@ let currentGang = null;
         loadGangData();
       } catch (err) {
         console.error("Deposit error:", err);
+      }
+    }
+
+let raidBossData = null;
+    let raidHitCooldown = false;
+
+    async function loadRaidBoss() {
+      if (!sbClient) return;
+
+      try {
+        const { data, error } = await sbClient
+          .from('world_boss')
+          .select('*')
+          .eq('id', 1)
+          .single();
+
+        if (error || !data) return;
+        raidBossData = data;
+
+        const hpPct = Math.max(0, (data.cur_hp / data.max_hp) * 100);
+        document.getElementById('raidBossName').innerText = data.name;
+        document.getElementById('raidBossHpText').innerText = `${Math.max(0, data.cur_hp)} / ${data.max_hp}`;
+        document.getElementById('raidBossHpBar').style.width = hpPct + '%';
+
+        const badge = document.getElementById('raidStatusBadge');
+        const btn = document.getElementById('btnRaidHit');
+
+        if (data.cur_hp <= 0 || data.status === 'defeated') {
+          badge.innerText = 'ОБЛАВА ОТБИТА';
+          badge.style.background = '#4caf50';
+          btn.disabled = true;
+          btn.innerText = '🏆 Босс повержен всей братвой!';
+          btn.style.background = '#333';
+        } else {
+          badge.innerText = 'АКТИВЕН';
+          badge.style.background = '#d32f2f';
+          btn.disabled = false;
+          btn.innerText = '💥 Всей толпой на босса (-5 ⚡)';
+          btn.style.background = '';
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки рейд-босса:", err);
+      }
+    }
+
+    async function hitRaidBoss(e) {
+      if (!raidBossData) return;
+      if (raidBossData.cur_hp <= 0) return alert("Босс уже повержен!");
+      if (p.energy < 5) return alert("Не хватает энергии! Нужно 5 ⚡");
+      if (raidHitCooldown) return alert("Переведи дух пару секунд перед новым выпадом!");
+
+      raidHitCooldown = true;
+      setTimeout(() => { raidHitCooldown = false; }, 1500);
+
+      p.energy -= 5;
+      save();
+
+      tg?.HapticFeedback?.impactOccurred('heavy');
+      triggerShake();
+
+      // Урон зависит от силы персонажа
+      const effStr = getEffectiveStr();
+      let dmg = Math.max(10, effStr * 3 + Math.floor(Math.random() * 10));
+
+      playSound('crit');
+      spawnDmgText(`-${dmg} 💥`, true, e);
+
+      // Оптимистично уменьшаем на экране сразу
+      raidBossData.cur_hp = Math.max(0, raidBossData.cur_hp - dmg);
+      const hpPct = Math.max(0, (raidBossData.cur_hp / raidBossData.max_hp) * 100);
+      document.getElementById('raidBossHpText').innerText = `${raidBossData.cur_hp} / ${raidBossData.max_hp}`;
+      document.getElementById('raidBossHpBar').style.width = hpPct + '%';
+
+      // Награда за каждый удар
+      const seedsReward = Math.floor(dmg / 2);
+      p.seeds += seedsReward;
+      save();
+
+      try {
+        // Списываем урон в базе
+        const newHp = raidBossData.cur_hp;
+        const isDefeated = newHp <= 0;
+
+        await sbClient.from('world_boss').update({
+          cur_hp: newHp,
+          status: isDefeated ? 'defeated' : 'alive',
+          updated_at: new Date().toISOString()
+        }).eq('id', 1);
+
+        if (isDefeated) {
+          playSound('coin');
+          p.seeds += 500; // Бонус за добивание
+          alert("🎉 НЕВЕРОЯТНО! Ты нанес финальный удар и спас район! Бонус +500 семок в карман!");
+          save();
+          loadRaidBoss();
+        }
+      } catch (err) {
+        console.error("Ошибка обновления рейд-босса:", err);
       }
     }
     
