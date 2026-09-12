@@ -7,124 +7,450 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      margin: 0; padding: 0;
-      background: #121212; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      user-select: none;
-      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-      position: relative;
-    }
+  @import url('https://fonts.googleapis.com/css2?family=Marck+Script&family=Russo+One&display=swap');
 
-    .shake { animation: screenShake 0.18s ease-in-out; }
-    @keyframes screenShake {
-      0% { transform: translate(0, 0); }
-      25% { transform: translate(-4px, 3px); }
-      50% { transform: translate(4px, -3px); }
-      75% { transform: translate(-2px, -2px); }
-      100% { transform: translate(0, 0); }
-    }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    background: #11140e;
+    color: #2c251d;
+    font-family: 'Russo One', Impact, sans-serif;
+    user-select: none;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+  }
 
-    .dmg-popup {
-      position: absolute; font-size: 22px; font-weight: 900;
-      color: #ff3d00; pointer-events: none; z-index: 999;
-      animation: flyUp 0.65s ease-out forwards;
-      text-shadow: 0 2px 4px #000;
-    }
-    .dmg-popup.crit { color: #ffd600; font-size: 28px; }
-    @keyframes flyUp {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
-    }
+  #gameBody {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: #252b20;
+    box-shadow: 0 0 25px rgba(0,0,0,0.8);
+  }
 
-    .hud {
-      display: grid; grid-template-columns: repeat(5, 1fr);
-      background: #1c1c1c; border-bottom: 2px solid #e65100;
-      padding: 6px 2px; text-align: center; font-size: 10px;
-    }
-    .hud-num { font-size: 13px; font-weight: bold; color: #ffb74d; margin-top: 2px; }
-    .hud-phones { color: #40c4ff; }
+  /* 1. ВЕРХНИЙ БЕТОННЫЙ HUD СО СКОЛОТЫМИ КРАЯМИ */
+  .hud-stone {
+    position: relative;
+    background: linear-gradient(180deg, #9b8a72 0%, #7d6b54 60%, #5d4d39 100%);
+    border: 3px solid #3d3122;
+    border-bottom: 5px solid #231b12;
+    padding: 6px 8px 10px;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), 0 5px 12px rgba(0,0,0,0.6);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 88%, 95% 94%, 88% 90%, 75% 98%, 55% 92%, 40% 99%, 20% 91%, 8% 97%, 0% 89%);
+    z-index: 10;
+  }
 
-    .screen {
-      flex: 1; display: none; flex-direction: column;
-      align-items: center; padding: 12px; overflow-y: auto;
-    }
-    .screen.active { display: flex; }
+  .hud-top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-    /* Оформление холста персонажа */
-    .hero-canvas {
-      width: 100%; max-width: 320px; height: 180px;
-      border-radius: 10px; border: 2px solid #333;
-      background: #1a1a1a; margin-bottom: 8px;
-    }
+  /* Аватарка авторитета слева */
+  .hud-avatar {
+    width: 46px;
+    height: 48px;
+    background: #e4d8c5;
+    border: 2px solid #2c2115;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
 
-    .bar-wrap {
-      width: 100%; max-width: 320px; background: #333;
-      height: 12px; border-radius: 6px; overflow: hidden; margin: 4px 0 6px;
-    }
-    .bar-fill-hp { height: 100%; background: #e53935; transition: width 0.2s; }
-    .bar-fill-enemy { height: 100%; background: #8e24aa; transition: width 0.2s; }
+  /* Волнистые изогнутые бары энергии и хп */
+  .hud-bars {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
-    .stats-box {
-      width: 100%; max-width: 320px; background: #1e1e1e;
-      border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5;
-      border: 1px solid #333;
-    }
+  .curved-bar-wrap {
+    position: relative;
+    height: 16px;
+    background: #231b13;
+    border: 2px solid #140e09;
+    border-radius: 9px 14px 11px 16px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px #000;
+  }
 
-    .speech-bubble {
-      width: 100%; max-width: 320px; background: #262626;
-      border-left: 4px solid #e65100; padding: 8px 12px;
-      font-style: italic; font-size: 13px; color: #ffcc80;
-      margin-bottom: 8px; border-radius: 0 8px 8px 0;
-    }
+  .curved-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
 
-    .battle-log {
-      width: 100%; max-width: 320px; height: 95px; background: #0a0a0a;
-      border-radius: 8px; padding: 8px; font-size: 12px; overflow-y: auto;
-      border: 1px solid #333; color: #ccc; margin-bottom: 8px; text-align: left;
-    }
+  .fill-energy {
+    background: linear-gradient(180deg, #81c784 0%, #2e7d32 60%, #1b5e20 100%);
+    box-shadow: inset 0 2px 2px rgba(255,255,255,0.4);
+  }
 
-    .list-item {
-      width: 100%; max-width: 320px; background: #1e1e1e;
-      border: 1px solid #333; border-radius: 8px; padding: 9px;
-      margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
-    }
+  .fill-hp {
+    background: linear-gradient(180deg, #e57373 0%, #c62828 60%, #8e0000 100%);
+    box-shadow: inset 0 2px 2px rgba(255,255,255,0.4);
+  }
 
-    .btn {
-      background: #e65100; color: #fff; border: none;
-      padding: 9px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;
-    }
-    .btn:active { transform: scale(0.97); }
-    .btn-boss { background: linear-gradient(180deg, #b71c1c, #d32f2f); box-shadow: 0 0 10px rgba(211,47,47,0.4); }
-    .btn-tg { background: #0088cc; font-size: 15px; padding: 14px; width: 100%; max-width: 320px; }
-    .btn-blue { background: #0288d1; }
+  .bar-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+  }
 
-    .nav-bar { display: flex; background: #181818; border-top: 1px solid #333; }
-    .nav-tab {
-      flex: 1; text-align: center; padding: 10px 0; font-size: 9px;
-      color: #777; cursor: pointer;
-    }
-    .nav-tab.active { color: #ffb74d; font-weight: bold; border-top: 2px solid #ffb74d; }
+  /* Валюты на фанерках */
+  .hud-currencies {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    justify-content: space-between;
+  }
 
-    #cloudStatus {
-      font-size: 10px; color: #888; text-align: center; margin-bottom: 4px;
-    }
-  </style>
+  .wood-badge {
+    background: #e2d2b8;
+    border: 2px solid #5a4632;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #2b1f13;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 1px 2px 2px rgba(0,0,0,0.3);
+  }
+
+  /* 2. ПОДЪЕЗД С СОВЕТСКОЙ ЗЕЛЕНОЙ СТЕНОЙ */
+  .podiezd-bg {
+    flex-grow: 1;
+    position: relative;
+    background: linear-gradient(180deg, #c5bba8 0%, #a49780 44%, #2e4d34 45%, #1b3821 82%, #141713 83%, #0c0e0b 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 10px 90px;
+  }
+
+  /* Почтовые ящики с граффити на стене */
+  .mailboxes {
+    width: 95%;
+    height: 64px;
+    background: #394747;
+    border: 3px solid #1c2626;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 3px;
+  }
+
+  .mail-slot {
+    background: #273333;
+    border: 1px solid #141b1b;
+    position: relative;
+  }
+
+  .mail-slot::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 15%;
+    width: 70%;
+    height: 3px;
+    background: #0d1212;
+  }
+
+  /* Холст пацана на кортах */
+  #heroCanvas {
+    background: transparent;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.6));
+  }
+
+  /* 3. РВАНЫЙ ПЕРГАМЕНТ / БУМАЖНЫЕ СВИТКИ (МОДАЛКИ И СПИСКИ) */
+  .paper-scroll {
+    background: #f1e6cf;
+    border: 2px solid #5a452e;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.6), inset 0 0 20px rgba(168, 137, 89, 0.4);
+    position: relative;
+    padding: 14px 12px;
+    margin: 8px 0;
+    border-radius: 4px;
+    clip-path: polygon(
+      0% 2%, 2% 0%, 98% 0%, 100% 3%, 99% 25%, 100% 50%, 98% 75%, 100% 98%, 97% 100%, 
+      3% 99%, 0% 97%, 1% 75%, 0% 50%, 2% 25%
+    );
+  }
+
+  .paper-scroll::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, #7c6042, #bda27f, #7c6042);
+    border-bottom: 1px solid #4a341f;
+  }
+
+  .paper-title {
+    font-family: 'Marck Script', cursive, sans-serif;
+    font-size: 22px;
+    text-align: center;
+    color: #2f2214;
+    margin: 0 0 8px;
+    text-decoration: underline;
+  }
+
+  /* 4. НИЖНЯЯ ПАНЕЛЬ: ПОЛАРОИДЫ КОРЕШЕЙ */
+  .crew-strip {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(180deg, #6c5a45 0%, #463725 100%);
+    border-top: 3px solid #231b12;
+    padding: 6px 4px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    z-index: 100;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.6);
+  }
+
+  .polaroid-card {
+    background: #eae2cf;
+    border: 2px solid #261c13;
+    border-radius: 3px;
+    padding: 3px 3px 6px;
+    width: 58px;
+    flex-shrink: 0;
+    text-align: center;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+    position: relative;
+  }
+
+  .polaroid-photo {
+    width: 100%;
+    height: 48px;
+    background: #a69883;
+    border: 1px solid #5a4b39;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+
+  .polaroid-lvl {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background: #241a12;
+    color: #ffd54f;
+    font-size: 8px;
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+
+  .polaroid-name {
+    font-size: 9px;
+    color: #261c13;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Кнопки меню PlayFlock */
+  .flock-btn {
+    background: linear-gradient(180deg, #dfd0b5 0%, #b89f7c 100%);
+    border: 2px solid #4a3826;
+    border-bottom: 4px solid #291c10;
+    border-radius: 4px;
+    color: #291c10;
+    font-family: 'Russo One', sans-serif;
+    font-size: 11px;
+    padding: 6px 12px;
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+
+  .flock-btn:active {
+    transform: translateY(2px);
+    border-bottom: 2px solid #291c10;
+  }
+
+  /* Навигация PlayFlock */
+  .flock-tabs {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .flock-tab {
+    flex: 1;
+    background: #463826;
+    border: 2px solid #261d12;
+    color: #d8c8b0;
+    font-size: 10px;
+    padding: 5px 0;
+    text-align: center;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+  }
+
+  .flock-tab.active {
+    background: #8b7152;
+    color: #fff;
+    border-bottom: none;
+  }
+</style>
 </head>
 <body id="gameBody">
 
-  <!-- HUD -->
-  <div class="hud">
-    <div>🌻 Семки<div class="hud-num" id="hudSeeds">0</div></div>
-    <div>📱 Мобилы<div class="hud-num hud-phones" id="hudPhones">0</div></div>
-    <div>⚡ Энергия<div class="hud-num"><span id="hudEnergy">50</span>/50</div></div>
-    <div>❤️ ХП<div class="hud-num"><span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div></div>
-    <div>👑 Чин<div class="hud-num" id="hudLevel">1</div></div>
+<!-- ВЕРХНИЙ БЕТОННЫЙ HUD СО СКОЛОМ -->
+  <div class="hud-stone">
+    <div class="hud-top-row">
+      <div class="hud-avatar">🧢</div>
+      <div class="hud-bars">
+        <!-- Бодрость / Энергия -->
+        <div class="curved-bar-wrap">
+          <div id="hudEnergyBar" class="curved-bar-fill fill-energy" style="width: 100%;"></div>
+          <div class="bar-text">⚡ ЭНЕРГИЯ: <span id="hudEnergy">50</span>/<span id="hudMaxEnergy">50</span></div>
+        </div>
+        <!-- Здоровье -->
+        <div class="curved-bar-wrap">
+          <div id="hudHpBar" class="curved-bar-fill fill-hp" style="width: 100%;"></div>
+          <div class="bar-text">❤️ ХП: <span id="hudHp">100</span>/<span id="hudMaxHp">100</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ресурсы на фанерных плашках -->
+    <div class="hud-currencies">
+      <div class="wood-badge">🌻 <b id="hudSeeds">0</b></div>
+      <div class="wood-badge">📱 <b id="hudPhones">0</b></div>
+      <div class="wood-badge">💪 <b id="statStr">5</b></div>
+      <div class="wood-badge">⭐ Чин: <b id="hudLevel">1</b></div>
+    </div>
   </div>
 
+  <!-- ОСНОВНОЙ ЭКРАН: ПОДЪЕЗД С СОВЕТСКОЙ СТЕНОЙ И ЯЩИКАМИ -->
+  <div class="podiezd-bg">
+
+    <!-- Вкладки районов / подвалов -->
+    <div class="flock-tabs">
+      <div class="flock-tab active" onclick="tab('screenHome', this)">Подъезд 🚪</div>
+      <div class="flock-tab" onclick="tab('screenFight', this)">Район 👊</div>
+      <div class="flock-tab" onclick="tab('screenShop', this)">Ларёк 🏪</div>
+      <div class="flock-tab" onclick="tab('screenCrew', this)">Бригада 👥</div>
+    </div>
+
+    <!-- ЭКРАН 1: ПОДЪЕЗД С ПАЦАНОМ -->
+    <div class="screen active" id="screenHome" style="width: 100%; text-align: center;">
+      <!-- Почтовые ящики -->
+      <div class="mailboxes">
+        <div class="mail-slot"></div>
+        <div class="mail-slot"></div>
+        <div class="mail-slot"></div>
+        <div class="mail-slot"></div>
+        <div class="mail-slot"></div>
+      </div>
+
+      <!-- Холст пацана на кортах -->
+      <canvas id="heroCanvas" width="300" height="230" style="cursor: pointer;" onclick="p.seeds++; spawnDmgText('+1 🌻', false, event); tg?.HapticFeedback?.impactOccurred('light'); save(); render();"></canvas>
+
+      <!-- Рваный пергамент: Снять долю с района -->
+      <div class="paper-scroll" style="width: 95%; margin: 6px auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="text-align: left;">
+            <b style="color: #291c10; font-size: 11px;">🏪 Касса с точек:</b>
+            <div style="font-size: 13px; color: #825e1a;"><span id="afkSeedsText">0</span> 🌻</div>
+          </div>
+          <button class="flock-btn" onclick="claimAfkIncome()">Снять долю</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЭКРАН 2: РАЙОН (ДРАКИ) -->
+    <div class="screen" id="screenFight" style="width: 100%; display: none;">
+      <!-- Тут твои боссы и драки в стиле paper-scroll -->
+      <div id="districtList"></div>
+    </div>
+
+    <!-- ЭКРАН 3: ЛАРЁК -->
+    <div class="screen" id="screenShop" style="width: 100%; display: none;">
+      <div class="paper-scroll">
+        <div class="paper-title">Ларёк у Ашота</div>
+        <div id="shopList"></div>
+      </div>
+    </div>
+
+    <!-- ЭКРАН 4: БРИГАДА -->
+    <div class="screen" id="screenCrew" style="width: 100%; display: none;">
+      <div class="paper-scroll">
+        <div class="paper-title">Братва района</div>
+        <div id="crewContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 4. ПОЛАРОИДНАЯ ЛЕНТА КОРЕШЕЙ СНИЗУ -->
+  <div class="crew-strip">
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">15</span>
+      <div class="polaroid-photo">🧔</div>
+      <div class="polaroid-name">Смотрящий</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">9</span>
+      <div class="polaroid-photo">👱</div>
+      <div class="polaroid-name">Кабан</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">6</span>
+      <div class="polaroid-photo">🕶️</div>
+      <div class="polaroid-name">Лысый</div>
+    </div>
+    <div class="polaroid-card">
+      <span class="polaroid-lvl">3</span>
+      <div class="polaroid-photo">🧢</div>
+      <div class="polaroid-name">Ты</div>
+    </div>
+    <div class="polaroid-card" onclick="inviteFriends()">
+      <span class="polaroid-lvl">+</span>
+      <div class="polaroid-photo" style="background: #dfd4be; font-size: 20px;">➕</div>
+      <div class="polaroid-name" style="color: #7b5828;">Позвать</div>
+    </div>
+  </div>
+
+</div>
+
   <!-- ДВОР (ХОЛСТ ВМЕСТО КАРТИНКИ) -->
-  <div class="screen active" id="screenHome">
+  <div class="screen active podiezd-bg" id="screenHome">
     <div id="cloudStatus">☁️ Подключение к облаку...</div>
     <h3 style="margin: 2px 0 6px;" id="heroName">Четкий пацан</h3>
     
@@ -737,7 +1063,28 @@
       }
 
       drawHero();
+      function updateHUD() {
+      // Обновляем числа
+      document.getElementById('hudSeeds').innerText = p.seeds || 0;
+      document.getElementById('hudPhones').innerText = p.phones || 0;
+      document.getElementById('hudEnergy').innerText = p.energy || 0;
+      document.getElementById('hudMaxEnergy').innerText = p.maxEnergy || 50;
+      document.getElementById('hudHp').innerText = p.hp || 100;
+      document.getElementById('hudMaxHp').innerText = p.maxHp || 100;
+      document.getElementById('statStr').innerText = getEffectiveStr ? getEffectiveStr() : (p.str || 5);
+      document.getElementById('hudLevel').innerText = p.level || 1;
+
+      // Обновляем изогнутые полоски
+      const energyPct = Math.max(0, Math.min(100, (p.energy / (p.maxEnergy || 50)) * 100));
+      const hpPct = Math.max(0, Math.min(100, (p.hp / (p.maxHp || 100)) * 100));
+
+      const eBar = document.getElementById('hudEnergyBar');
+      const hBar = document.getElementById('hudHpBar');
+      if (eBar) eBar.style.width = energyPct + '%';
+      if (hBar) hBar.style.width = hpPct + '%';
+
       drawPatsanAvatar();
+    }
     }
 
     // ТАБЫ (ВКЛАДКИ)
@@ -1499,123 +1846,149 @@ let raidBossData = null;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const cx = canvas.width / 2; // середина по горизонтали (160)
-      const cy = 20; // смещение сверху
+      const cx = canvas.width / 2;
+      const cy = 10;
 
-      // 1. Тень на асфальте под пацаном
+      // Общие настройки контура в стиле Flash/ВК
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+
+      // 1. ТЕНЬ НА ПОЛУ
       ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 150, 50, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 205, 75, 14, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Кроссовки (белые педали)
+      // 2. СТУПНИ / ПЕДАЛИ
       ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#1b140e";
+      ctx.lineWidth = 3;
+      // Левая педаль
       ctx.beginPath();
-      ctx.ellipse(cx - 25, cy + 142, 14, 7, -0.2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(cx - 36, cy + 198, 18, 9, -0.15, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // Правая педаль
       ctx.beginPath();
-      ctx.ellipse(cx + 25, cy + 142, 14, 7, 0.2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(cx + 36, cy + 198, 18, 9, 0.15, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
 
-      // 3. Треники с лампасами (сидя на кортах)
-      const hasLeather = (p.gear && p.gear.includes('Кожанка'));
-      ctx.fillStyle = hasLeather ? "#1c1c1c" : "#102038";
+      // 3. НОГИ / МУСКУЛИСТЫЕ ИКРЫ (КОЖА)
+      ctx.fillStyle = "#dfa980";
       ctx.beginPath();
-      ctx.roundRect(cx - 38, cy + 95, 24, 48, [8, 8, 4, 4]);
-      ctx.roundRect(cx + 14, cy + 95, 24, 48, [8, 8, 4, 4]);
-      ctx.fill();
+      ctx.roundRect(cx - 44, cy + 145, 20, 48, 6);
+      ctx.roundRect(cx + 24, cy + 145, 20, 48, 6);
+      ctx.fill(); ctx.stroke();
 
-      // Белые лампасы Abibas
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.5;
+      // 4. СПОРТИВНЫЕ ШОРТЫ С ПОЛОСКАМИ (как на скриншоте 1)
+      ctx.fillStyle = "#f3f0e6"; // белые боксерские шорты
       ctx.beginPath();
-      ctx.moveTo(cx - 36, cy + 98); ctx.lineTo(cx - 36, cy + 140);
-      ctx.moveTo(cx + 34, cy + 98); ctx.lineTo(cx + 34, cy + 140);
-      ctx.stroke();
+      ctx.moveTo(cx - 46, cy + 105);
+      ctx.lineTo(cx + 46, cy + 105);
+      ctx.lineTo(cx + 52, cy + 152);
+      ctx.lineTo(cx + 8, cy + 152);
+      ctx.lineTo(cx, cy + 120);
+      ctx.lineTo(cx - 8, cy + 152);
+      ctx.lineTo(cx - 52, cy + 152);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
 
-      // 4. Верх (олимпийка или кожанка)
-      if (hasLeather) {
-        ctx.fillStyle = "#211c18";
-        ctx.beginPath();
-        ctx.roundRect(cx - 32, cy + 48, 64, 52, 10);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = "#0d47a1"; // синяя спортивка
-        ctx.beginPath();
-        ctx.roundRect(cx - 30, cy + 48, 60, 52, 8);
-        ctx.fill();
-        // Белая полоска поперек олимпийки
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(cx - 30, cy + 68, 60, 7);
-      }
+      // Оранжево-желтые лампасы на шортах
+      ctx.fillStyle = "#e67e22";
+      ctx.fillRect(cx - 50, cy + 130, 8, 20);
+      ctx.fillRect(cx + 42, cy + 130, 8, 20);
 
-      // 5. Руки на коленях
-      ctx.fillStyle = "#e0a97d";
+      // 5. МОЩНЫЕ РУКИ И КУЛАКИ (ШИРОКАЯ СТОЙКА)
+      ctx.fillStyle = "#dfa980";
+      // Левая рука (бицепс и предплечье)
       ctx.beginPath();
-      ctx.arc(cx - 28, cy + 102, 8, 0, Math.PI * 2);
-      ctx.arc(cx + 28, cy + 102, 8, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(cx - 48, cy + 56);
+      ctx.quadraticCurveTo(cx - 72, cy + 85, cx - 64, cy + 120);
+      ctx.lineTo(cx - 48, cy + 120);
+      ctx.quadraticCurveTo(cx - 52, cy + 85, cx - 36, cy + 62);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
 
-      // Бита или кастет в руке
-      if (p.gear && p.gear.includes('Бита')) {
-        ctx.fillStyle = "#d7ccc8";
-        ctx.save();
-        ctx.translate(cx + 32, cy + 95);
-        ctx.rotate(-0.4);
-        ctx.fillRect(0, -42, 8, 45);
-        ctx.restore();
-      } else if (p.gear && p.gear.includes('Кастет')) {
-        ctx.fillStyle = "#b0bec5";
-        ctx.beginPath();
-        ctx.arc(cx + 30, cy + 102, 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 6. Шея и голова
-      ctx.fillStyle = "#e0a97d";
-      ctx.fillRect(cx - 8, cy + 38, 16, 12);
-
-      // Золотая цепь на шее
-      if (p.gear && (p.gear.includes('Цепь') || p.level >= 5)) {
-        ctx.strokeStyle = "#ffd700";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy + 44, 10, 0.1, Math.PI - 0.1);
-        ctx.stroke();
-      }
-
-      // Голова
-      ctx.fillStyle = "#e8b288";
+      // Правая рука
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 26, 18, 22, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(cx + 48, cy + 56);
+      ctx.quadraticCurveTo(cx + 72, cy + 85, cx + 64, cy + 120);
+      ctx.lineTo(cx + 48, cy + 120);
+      ctx.quadraticCurveTo(cx + 52, cy + 85, cx + 36, cy + 62);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
 
-      // Уши
+      // Кулаки
       ctx.beginPath();
-      ctx.arc(cx - 18, cy + 27, 4, 0, Math.PI * 2);
-      ctx.arc(cx + 18, cy + 27, 4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(cx - 56, cy + 126, 11, 0, Math.PI * 2);
+      ctx.arc(cx + 56, cy + 126, 11, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
 
-      // 7. Лицо (глаза и брови)
-      ctx.fillStyle = "#111";
-      ctx.fillRect(cx - 10, cy + 22, 4, 3);
-      ctx.fillRect(cx + 6, cy + 22, 4, 3);
+      // 6. ТОРС: БЕЛАЯ МАЙКА-АЛКОГОЛИЧКА С МЫШЕЧНЫМ РЕЛЬЕФОМ
+      ctx.fillStyle = "#f5f3eb";
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, cy + 52);
+      ctx.lineTo(cx - 42, cy + 62);
+      ctx.lineTo(cx - 36, cy + 108);
+      ctx.lineTo(cx + 36, cy + 108);
+      ctx.lineTo(cx + 42, cy + 62);
+      ctx.lineTo(cx + 24, cy + 52);
+      ctx.quadraticCurveTo(cx, cy + 68, cx - 24, cy + 52);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
 
-      ctx.strokeStyle = "#222";
+      // Складки и грудные мышцы на майке
+      ctx.strokeStyle = "#c2baa8";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx - 12, cy + 19); ctx.lineTo(cx - 5, cy + 21);
-      ctx.moveTo(cx + 12, cy + 19); ctx.lineTo(cx + 5, cy + 21);
+      ctx.moveTo(cx - 18, cy + 76); ctx.lineTo(cx - 2, cy + 82);
+      ctx.moveTo(cx + 18, cy + 76); ctx.lineTo(cx + 2, cy + 82);
+      ctx.moveTo(cx, cy + 82); ctx.lineTo(cx, cy + 104);
       ctx.stroke();
 
-      // 8. Кепка-восьмиклинка
-      ctx.fillStyle = "#263238";
+      // 7. ШЕЯ И ЗОЛОТОЙ КРЕСТ / КУЛОН
+      ctx.strokeStyle = "#1b140e";
+      ctx.lineWidth = 3;
+      ctx.fillStyle = "#dfa980";
+      ctx.fillRect(cx - 12, cy + 42, 24, 16);
+      ctx.strokeRect(cx - 12, cy + 42, 24, 16);
+
+      // Зеленый кулон авторитета (как на скриншоте 2)
+      ctx.strokeStyle = "#2e7d32";
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.ellipse(cx + 3, cy + 14, 20, 6, 0.05, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(cx, cy + 64, 7, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 8. ГОЛОВА И ДЕРЗКОЕ ЛИЦО
+      ctx.fillStyle = "#dfa980";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 8, 21, 12, -0.05, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(cx, cy + 30, 20, 23, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Черные короткие волосы
+      ctx.fillStyle = "#1e1e1e";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 16, 20, 12, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Очки-капельки авторитета или дерзкие глаза
+      ctx.fillStyle = "#151515";
+      ctx.beginPath();
+      ctx.ellipse(cx - 8, cy + 29, 6, 4, 0.1, 0, Math.PI * 2);
+      ctx.ellipse(cx + 8, cy + 29, 6, 4, -0.1, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Переносица очков
+      ctx.strokeStyle = "#151515";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy + 28); ctx.lineTo(cx + 4, cy + 28);
+      ctx.stroke();
+
+      // Ухмылка
+      ctx.beginPath();
+      ctx.arc(cx + 2, cy + 42, 6, 0.2, Math.PI - 0.4);
+      ctx.stroke();
     }
     let thimbleBet = 0;
     let thimbleWinningIndex = -1;
