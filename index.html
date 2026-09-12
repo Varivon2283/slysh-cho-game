@@ -823,6 +823,42 @@
 
     // Запуск игры
     loadCloudProfile();
+
+    async function buyStars(packageType) {
+      if (!tg) return alert("Оплата доступна только внутри Telegram!");
+
+      try {
+        const res = await fetch(`${RENDER_BACKEND_URL}/create-invoice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tg_id: userTgId,
+            package: packageType
+          })
+        });
+
+        const data = await res.json();
+        if (data.ok && data.invoice_link) {
+          // Открываем нативное всплывающее окно Telegram Stars
+          tg.openInvoice(data.invoice_link, (status) => {
+            if (status === 'paid') {
+              playSound('coin');
+              tg?.HapticFeedback?.notificationOccurred('success');
+              alert("Донат зачислен! Обновляем карманы...");
+              setTimeout(loadCloudProfile, 1500); // перезагружаем профиль из Supabase
+            } else if (status === 'cancelled') {
+              console.log("Оплата отменена игроком");
+            } else {
+              alert("Сбой при оплате: " + status);
+            }
+          });
+        } else {
+          alert("Не удалось создать счет: " + (data.error || "ошибка сервера"));
+        }
+      } catch (err) {
+        alert("Ошибка связи с сервером: " + err.message);
+      }
+    }
   </script>
 </body>
 </html>
