@@ -174,21 +174,123 @@ async def handle_create_invoice(request):
         print(f"Ошибка создания счета: {e}")
         return web.json_response({"ok": False, "error": str(e)}, status=500, headers=headers)
 
+async def handle_notify_pvp(request):
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+    }
+    if request.method == "OPTIONS":
+        return web.Response(headers=headers)
+
+    try:
+        data = await request.json()
+        victim_id = data.get("victim_id")
+        attacker_name = data.get("attacker_name", "Неизвестный")
+        stolen = data.get("stolen", 10)
+
+        if victim_id:
+            await bot.send_message(
+                chat_id=victim_id,
+                text=(
+                    f"👊 <b>Шухер на районе!</b>\n\n"
+                    f"На тебя наехал <b>{attacker_name}</b> и отжал <b>-{stolen} 🌻</b>!\n"
+                    f"Зайди в качалку, подтяни бицуху и накажи дерзкого!"
+                ),
+                reply_markup=get_main_kb(),
+                parse_mode="HTML"
+            )
+        return web.json_response({"ok": True}, headers=headers)
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, headers=headers)
+
 async def start_web_server():
     app = web.Application()
     app.router.add_get("/", handle_ping)
     app.router.add_post("/create-invoice", handle_create_invoice)
     app.router.add_options("/create-invoice", handle_create_invoice)
     
+    # Вот эти две строчки добавляем сюда:
+    app.router.add_post("/notify-pvp", handle_notify_pvp)
+    app.router.add_options("/notify-pvp", handle_notify_pvp)
+
     port = int(os.environ.get("PORT", 8080))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"Веб-сервер и платежи запущены на порту {port}")
+    
+from datetime import datetime, timezone, timedelta
+
+async def notification_cron():
+    """Фоновый цикл: возвращает игроков в игру, когда переполняется касса"""
+    print("Воркер районных уведомлений запущен!")
+    await asyncio.sleep(60) # ждем минуту после старта
+
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            # Ищем игроков, у которых последнее снятие кассы было больше 6 часов назад,
+            # и которым не слали пуш хотя бы последние 12 часов
+            res = supabase.table("players").select("tg_id, name, last_claim_time, last_notify_at").execute()
+
+            if res.data:
+                for player in res.data:
+                    user_id = player.get("tg_id")
+                    if not user_id:
+                        continue
+
+                    # Проверяем время последнего снятия кассы
+                    last_claim_str = player.get("last_claim_time")
+                    last_notify_str = player.get("last_notify_at")
+
+                    should_notify = False
+
+                    if last_claim_str:
+                        last_claim = datetime.fromisoformat(last_claim_str.replace("Z", "+00:00"))
+                        # Если не заходил за кассой больше 5 часов
+                        if (now - last_claim) > timedelta(hours=5):
+                            should_notify = True
+
+                    # Проверяем, не слали ли мы пуш недавно
+                    if last_notify_str and should_notify:
+                        last_notify = datetime.fromisoformat(last_notify_str.replace("Z", "+00:00"))
+                        if (now - last_notify) < timedelta(hours=12):
+                            should_notify = False
+
+                    if should_notify:
+                        p_name = player.get("name") or "Братуха"
+                        try:
+                            await bot.send_message(
+                                chat_id=user_id,
+                                text=(
+                                    f"🚨 <b>{p_name}, касса на районе трещит по швам!</b>\n\n"
+                                    f"Твои киоски и точки забиты семками до упора 🌻\n"
+                                    f"Зайди снять долю, пока местные карманники не растащили хабар!"
+                                ),
+                                reply_markup=get_main_kb(),
+                                parse_mode="HTML"
+                            )
+                            # Отмечаем время отправки пуша
+                            supabase.table("players").update({
+                                "last_notify_at": now.isoformat()
+                            }).eq("tg_id", user_id).execute()
+                            print(f"Пуш отправлен пацану {user_id}")
+                            await asyncio.sleep(2) # пауза между сообщениями (анти-флуд телеграма)
+                        except Exception as e:
+                            print(f"Не удалось доставить пуш пользователю {user_id}: {e}")
+
+        except Exception as err:
+            print(f"Ошибка в цикле рассылки: {err}")
+
+        # Спим 30 минут до следующей проверки базы
+        await asyncio.sleep(1800)
 
 async def main():
     await start_web_server()
+    # Запускаем фоновые пуш-напоминания:
+    asyncio.create_task(notification_cron())
     print("Бот запущен и следит за районом...")
     await dp.start_polling(bot)
 
