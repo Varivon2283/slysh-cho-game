@@ -3,81 +3,429 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Слышь Чо</title>
-  <!-- Telegram Web App SDK -->
+  <title>Слышь Чо?</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
-      background-color: #1a1a1a;
+      padding: 0;
+      background: #181818;
       color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
+
+    /* Верхняя панель (HUD) */
     .hud {
       display: flex;
-      justify-content: space-between;
-      padding: 12px;
-      background: #2b2b2b;
-      border-bottom: 2px solid #ffcc00;
+      justify-content: space-around;
+      background: #242424;
+      border-bottom: 2px solid #e65100;
+      padding: 8px 4px;
     }
-    .stat-box { font-size: 14px; font-weight: bold; }
-    .content { padding: 20px; text-align: center; }
-    .action-btn {
+    .hud-card { text-align: center; font-size: 12px; }
+    .hud-num { font-size: 15px; font-weight: bold; color: #ffb74d; }
+
+    /* Экраны */
+    .screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px;
+      overflow-y: auto;
+    }
+    .screen.active { display: flex; }
+
+    /* Главный экран */
+    .hero-banner {
       width: 100%;
-      padding: 15px;
-      margin-top: 15px;
-      background: #e65100;
-      border: none;
+      max-width: 320px;
+      border-radius: 10px;
+      border: 2px solid #333;
+      margin-bottom: 12px;
+    }
+    .stats-box {
+      width: 100%;
+      max-width: 320px;
+      background: #242424;
       border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Боевой экран */
+    .fight-card {
+      width: 100%;
+      max-width: 320px;
+      background: #242424;
+      border: 1px solid #d32f2f;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .hp-bar {
+      width: 100%;
+      height: 12px;
+      background: #444;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 6px 0;
+    }
+    .hp-fill { height: 100%; background: #e53935; transition: width 0.2s; }
+    .battle-log {
+      width: 100%;
+      max-width: 320px;
+      height: 110px;
+      background: #111;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 12px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      color: #bbb;
+      margin-bottom: 10px;
+    }
+
+    /* Магазин и качалка */
+    .list-item {
+      width: 100%;
+      max-width: 320px;
+      background: #242424;
+      border: 1px solid #383838;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Кнопки */
+    .btn {
+      background: #e65100;
       color: #fff;
-      font-size: 16px;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-large {
+      width: 100%;
+      max-width: 320px;
+      padding: 14px;
+      font-size: 16px;
+      background: linear-gradient(180deg, #f57c00 0%, #e65100 100%);
+      box-shadow: 0 3px 0 #b23c00;
+    }
+
+    /* Нижнее меню навигации */
+    .nav-bar {
+      display: flex;
+      background: #1c1c1c;
+      border-top: 1px solid #333;
+    }
+    .nav-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 12px;
+      color: #888;
+      cursor: pointer;
+    }
+    .nav-tab.active {
+      color: #ffb74d;
+      font-weight: bold;
+      border-top: 2px solid #ffb74d;
     }
   </style>
 </head>
 <body>
+
+  <!-- ВЕРХНЯЯ ПАНЕЛЬ СТАТОВ -->
   <div class="hud">
-    <div class="stat-box">🌻 Семки: <span id="seeds">...</span></div>
-    <div class="stat-box">⚡ Энергия: <span id="energy">...</span>/100</div>
-    <div class="stat-box">👑 Уровень: <span id="level">1</span></div>
+    <div class="hud-card"><div>🌻 Семки</div><div class="hud-num" id="hudSeeds">0</div></div>
+    <div class="hud-card"><div>⚡ Энергия</div><div class="hud-num"><span id="hudEnergy">50</span>/50</div></div>
+    <div class="hud-card"><div>👑 Авторитет</div><div class="hud-num" id="hudLevel">1</div></div>
   </div>
 
-  <div class="content">
-    <h2 id="player-name">Загрузка...</h2>
-    <div id="character-view">
-      <!-- Место под Canvas или спрайт персонажа -->
-      <img src="assets/patsan_base.png" alt="Пацан" style="max-height: 250px;">
+  <!-- ЭКРАН 1: ГЛАВНАЯ (ДВОР) -->
+  <div class="screen active" id="screenHome">
+    <h3 style="margin: 4px 0 10px 0;" id="heroName">Четкий пацан</h3>
+    <img src="assets/preview.jpg" onerror="this.src='https://placehold.co/640x360/222/e65100?text=Слышь+Чо%3F'" class="hero-banner">
+
+    <div class="stats-box">
+      <div>💪 Сила: <b id="statStr">5</b></div>
+      <div>⚡ Ловкость: <b id="statAgi">5</b></div>
+      <div>❤️ Выносливость: <b id="statVit">10</b> (ХП: <span id="statHp">100</span>)</div>
+      <div style="margin-top: 6px; font-size: 12px; color: #aaa;">Шмот: <span id="equippedText">Спортивки с рынка</span></div>
     </div>
-    
-    <button class="action-btn" onclick="goToDistrict()">Пойти на район (минус 10 ⚡)</button>
+  </div>
+
+  <!-- ЭКРАН 2: РАЙОН (БОИ) -->
+  <div class="screen" id="screenFight">
+    <div class="fight-card">
+      <div style="font-weight: bold; font-size: 16px;" id="enemyName">Гопник с района</div>
+      <div class="hp-bar"><div class="hp-fill" id="enemyHpBar" style="width: 100%;"></div></div>
+      <div style="font-size: 12px;">Здоровье врага: <span id="enemyHpText">40</span></div>
+    </div>
+
+    <div class="battle-log" id="battleLog">Вы вышли на район... Выбери, на кого наехать!</div>
+
+    <div id="districtActions" style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 8px;">
+      <button class="btn btn-large" onclick="startFight(1)">👊 Докопаться до Школьника (-5 ⚡)</button>
+      <button class="btn btn-large" onclick="startFight(2)">🧢 Отжать кепку у Мажора (-10 ⚡)</button>
+      <button class="btn btn-large" onclick="startFight(3)">🥊 Забить стрелу Местному (-15 ⚡)</button>
+    </div>
+
+    <div id="fightActions" style="width: 100%; max-width: 320px; display: none; gap: 8px;">
+      <button class="btn btn-large" style="background: #d32f2f;" onclick="playerAttack()">Ударить по сопатке! 👊</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 3: КАЧАЛКА -->
+  <div class="screen" id="screenGym">
+    <h3 style="margin-top: 0;">Подвальная качалка</h3>
+    <div class="list-item">
+      <div><b>Жим штанги</b><br><small>+1 к Силе</small></div>
+      <button class="btn" onclick="upgradeStat('str')"><span id="costStr">20</span> 🌻</button>
+    </div>
+    <div class="list-item">
+      <div><b>Турники / Брусья</b><br><small>+1 к Ловкости</small></div>
+      <button class="btn" onclick="upgradeStat('agi')"><span id="costAgi">20</span> 🌻</button>
+    </div>
+    <div class="list-item">
+      <div><b>Боксерский мешок</b><br><small>+1 к Выносливости (+10 ХП)</small></div>
+      <button class="btn" onclick="upgradeStat('vit')"><span id="costVit">20</span> 🌻</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 4: ЛАРЕК (МАГАЗИН) -->
+  <div class="screen" id="screenShop">
+    <h3 style="margin-top: 0;">Ларёк на остановке</h3>
+    <div class="list-item">
+      <div><b>Кепка-восьмиклинка</b><br><small>+3 к Ловкости</small></div>
+      <button class="btn" id="btnBuyCap" onclick="buyItem('cap', 50, 'agi', 3, 'Кепка-восьмиклинка')">50 🌻</button>
+    </div>
+    <div class="list-item">
+      <div><b>Кастет из свинца</b><br><small>+5 к Силе</small></div>
+      <button class="btn" id="btnBuyKnuckle" onclick="buyItem('knuckle', 120, 'str', 5, 'Кастет')">120 🌻</button>
+    </div>
+    <div class="list-item">
+      <div><b>Кожанка «Бригада»</b><br><small>+8 к Выносливости</small></div>
+      <button class="btn" id="btnBuyJacket" onclick="buyItem('jacket', 250, 'vit', 8, 'Кожанка Бригада')">250 🌻</button>
+    </div>
+  </div>
+
+  <!-- НАВИГАЦИЯ -->
+  <div class="nav-bar">
+    <div class="nav-tab active" onclick="switchTab('screenHome', this)">Двор 🏠</div>
+    <div class="nav-tab" onclick="switchTab('screenFight', this)">Район 👊</div>
+    <div class="nav-tab" onclick="switchTab('screenGym', this)">Качалка 🏋️</div>
+    <div class="nav-tab" onclick="switchTab('screenShop', this)">Ларёк 🏪</div>
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // Разворачиваем окно на весь экран
+    const tg = window.Telegram?.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
 
-    async function initGame() {
-      // Отправляем initData на бэкенд для верификации и получения профиля
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ init_data: tg.initData })
-      });
+    // Состояние персонажа
+    let state = {
+      seeds: parseInt(localStorage.getItem('sc_seeds') || '30'),
+      energy: parseInt(localStorage.getItem('sc_energy') || '50'),
+      maxEnergy: 50,
+      level: parseInt(localStorage.getItem('sc_lvl') || '1'),
+      str: parseInt(localStorage.getItem('sc_str') || '5'),
+      agi: parseInt(localStorage.getItem('sc_agi') || '5'),
+      vit: parseInt(localStorage.getItem('sc_vit') || '10'),
+      items: JSON.parse(localStorage.getItem('sc_items') || '[]'),
+      equippedName: localStorage.getItem('sc_eq_name') || 'Обычный спорткостюм'
+    };
+
+    let activeEnemy = null;
+
+    if (tg?.initDataUnsafe?.user?.first_name) {
+      document.getElementById('heroName').innerText = tg.initDataUnsafe.user.first_name;
+    }
+
+    function save() {
+      localStorage.setItem('sc_seeds', state.seeds);
+      localStorage.setItem('sc_energy', state.energy);
+      localStorage.setItem('sc_lvl', state.level);
+      localStorage.setItem('sc_str', state.str);
+      localStorage.setItem('sc_agi', state.agi);
+      localStorage.setItem('sc_vit', state.vit);
+      localStorage.setItem('sc_items', JSON.stringify(state.items));
+      localStorage.setItem('sc_eq_name', state.equippedName);
+      render();
+    }
+
+    function render() {
+      document.getElementById('hudSeeds').innerText = state.seeds;
+      document.getElementById('hudEnergy').innerText = state.energy;
+      document.getElementById('hudLevel').innerText = state.level;
+      document.getElementById('statStr').innerText = state.str;
+      document.getElementById('statAgi').innerText = state.agi;
+      document.getElementById('statVit').innerText = state.vit;
+      document.getElementById('statHp').innerText = state.vit * 10;
+      document.getElementById('equippedText').innerText = state.equippedName;
+
+      document.getElementById('costStr').innerText = state.str * 5;
+      document.getElementById('costAgi').innerText = state.agi * 5;
+      document.getElementById('costVit').innerText = state.vit * 3;
+
+      // Проверка купленных предметов
+      if (state.items.includes('cap')) markBought('btnBuyCap');
+      if (state.items.includes('knuckle')) markBought('btnBuyKnuckle');
+      if (state.items.includes('jacket')) markBought('btnBuyJacket');
+    }
+
+    function markBought(btnId) {
+      const btn = document.getElementById(btnId);
+      btn.innerText = 'Надето';
+      btn.disabled = true;
+      btn.style.background = '#444';
+    }
+
+    function switchTab(screenId, tabEl) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      tabEl.classList.add('active');
+    }
+
+    // Качалка
+    function upgradeStat(stat) {
+      const costs = { str: state.str * 5, agi: state.agi * 5, vit: state.vit * 3 };
+      if (state.seeds < costs[stat]) {
+        alert('Не хватает семок на тренировку!');
+        return;
+      }
+      state.seeds -= costs[stat];
+      state[stat] += 1;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    // Покупка шмота
+    function buyItem(id, price, stat, bonus, name) {
+      if (state.seeds < price) {
+        alert('В ларьке в долг не дают! Не хватает семок.');
+        return;
+      }
+      state.seeds -= price;
+      state[stat] += bonus;
+      state.items.push(id);
+      state.equippedName = name;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      save();
+    }
+
+    // БОЕВАЯ СИСТЕМА
+    const enemies = {
+      1: { name: "Школьник с ранцем", hp: 30, maxHp: 30, str: 3, agi: 2, reward: 15, cost: 5 },
+      2: { name: "Мажор из клуба", hp: 70, maxHp: 70, str: 6, agi: 5, reward: 40, cost: 10 },
+      3: { name: "Смотрящий за двором", hp: 140, maxHp: 140, str: 10, agi: 8, reward: 100, cost: 15 }
+    };
+
+    function log(msg) {
+      const el = document.getElementById('battleLog');
+      el.innerHTML += `<div>${msg}</div>`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function startFight(tier) {
+      const template = enemies[tier];
+      if (state.energy < template.cost) {
+        alert('Не хватает дыхалки (энергии)!');
+        return;
+      }
+      state.energy -= template.cost;
+      activeEnemy = { ...template, hp: template.maxHp };
       
-      const profile = await response.json();
-      document.getElementById('player-name').innerText = profile.first_name || "Четкий пацан";
-      document.getElementById('seeds').innerText = profile.seeds;
-      document.getElementById('energy').innerText = profile.energy;
+      document.getElementById('enemyName').innerText = activeEnemy.name;
+      document.getElementById('enemyHpText').innerText = activeEnemy.hp;
+      document.getElementById('enemyHpBar').style.width = '100%';
+      document.getElementById('battleLog').innerHTML = `Вы нарвались на: <b>${activeEnemy.name}</b>!<br>`;
+      
+      document.getElementById('districtActions').style.display = 'none';
+      document.getElementById('fightActions').style.display = 'flex';
+      save();
     }
 
-    function goToDistrict() {
-      tg.HapticFeedback.impactOccurred('medium'); // Тактильный отклик в ТГ
-      // Логика перехода к бою
+    function playerAttack() {
+      if (!activeEnemy) return;
+      tg?.HapticFeedback?.impactOccurred('medium');
+
+      // Удар игрока
+      let isDodge = Math.random() < (activeEnemy.agi * 0.03);
+      if (isDodge) {
+        log(`💨 Враг увернулся от твоего выпада!`);
+      } else {
+        let dmg = Math.max(3, state.str + Math.floor(Math.random() * 4));
+        activeEnemy.hp -= dmg;
+        log(`👊 Ты пробил на <b>${dmg}</b> урона!`);
+      }
+
+      if (activeEnemy.hp <= 0) {
+        winFight();
+        return;
+      }
+
+      // Ответка противника
+      setTimeout(() => {
+        let heroDodge = Math.random() < (state.agi * 0.03);
+        if (heroDodge) {
+          log(`⚡ Ты красиво ушел от удара!`);
+        } else {
+          let eDmg = Math.max(2, activeEnemy.str + Math.floor(Math.random() * 3));
+          log(`🤕 Враг ответил на <b>${eDmg}</b> урона!`);
+        }
+        updateFightUI();
+      }, 300);
+
+      updateFightUI();
     }
 
-    initGame();
+    function updateFightUI() {
+      if (!activeEnemy) return;
+      const cur = Math.max(0, activeEnemy.hp);
+      document.getElementById('enemyHpText').innerText = cur;
+      document.getElementById('enemyHpBar').style.width = (cur / activeEnemy.maxHp * 100) + '%';
+    }
+
+    function winFight() {
+      log(`🏆 <b>Победа!</b> Отжато: ${activeEnemy.reward} семок!`);
+      state.seeds += activeEnemy.reward;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      endFight();
+    }
+
+    function endFight() {
+      activeEnemy = null;
+      document.getElementById('districtActions').style.display = 'flex';
+      document.getElementById('fightActions').style.display = 'none';
+      save();
+    }
+
+    // Восстановление энергии (+1 каждые 4 сек)
+    setInterval(() => {
+      if (state.energy < state.maxEnergy) {
+        state.energy++;
+        save();
+      }
+    }, 4000);
+
+    render();
   </script>
 </body>
 </html>
